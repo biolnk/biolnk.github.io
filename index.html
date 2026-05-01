@@ -6,10 +6,8 @@
 <title>biolnk</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <style>
-*{box-sizing:border-box}
 body{
   margin:0;
   font-family:'Space Grotesk',sans-serif;
@@ -17,39 +15,20 @@ body{
   color:#fff;
 }
 
-canvas{
-  position:fixed;
-  top:0;left:0;
-  z-index:-1;
-}
-
 .center{
   position:absolute;
   top:50%;left:50%;
   transform:translate(-50%,-50%);
+  width:90%;
+  max-width:420px;
   text-align:center;
-  width:90%;max-width:420px;
   padding:20px;
   border-radius:16px;
   background:rgba(0,0,0,0.6);
   border:1px solid rgba(255,255,255,0.1);
 }
 
-button{
-  margin-top:10px;
-  padding:10px 20px;
-  border-radius:16px;
-  border:1px solid #fff;
-  background:transparent;
-  color:#fff;
-  cursor:pointer;
-}
-button:hover{
-  background:#fff;
-  color:#000;
-}
-
-input,select{
+input{
   width:100%;
   padding:10px;
   margin:6px 0;
@@ -58,31 +37,33 @@ input,select{
   color:#fff;
 }
 
-.links a{
-  display:block;
-  margin:8px auto;
-  padding:10px;
-  border-radius:16px;
-  text-decoration:none;
+button{
+  margin-top:10px;
+  padding:10px 16px;
+  border:1px solid #fff;
+  background:transparent;
   color:#fff;
-  width:220px;
-  border:1px solid rgba(255,255,255,0.2);
+  cursor:pointer;
+}
+button:hover{background:#fff;color:#000}
+
+.upload{
+  border:2px dashed #555;
+  padding:14px;
+  margin:10px 0;
+  cursor:pointer;
 }
 
 img{border-radius:50%}
-.upload{
-  border:2px dashed #555;
-  padding:16px;
-  border-radius:10px;
-  margin:10px 0;
-  cursor:pointer;
+
+.links input{
+  margin-bottom:6px;
 }
 </style>
 </head>
 
 <body>
 
-<canvas id="bg"></canvas>
 <div class="center" id="app"></div>
 
 <script type="module">
@@ -97,7 +78,7 @@ const db = getFirestore(initializeApp({
 
 const app = document.getElementById("app");
 
-let discordUser = null;
+let user = JSON.parse(localStorage.getItem("discordUser") || "null");
 
 /* =========================
    DISCORD LOGIN
@@ -109,10 +90,11 @@ window.loginDiscord = () => {
     "width=500,height=700"
   );
 
-  window.addEventListener("message", (event) => {
-    if (!event.data?.id) return;
+  window.addEventListener("message", (e) => {
+    if (!e.data?.id) return;
 
-    discordUser = event.data;
+    user = e.data;
+    localStorage.setItem("discordUser", JSON.stringify(user));
 
     loadEditor();
   });
@@ -124,23 +106,23 @@ window.loginDiscord = () => {
 const route = location.hash.replace("#/","");
 
 /* =========================
-   PROFILE VIEW
+   VIEW PROFILE
 ========================= */
 if(route){
   const snap = await getDoc(doc(db,"users",route));
 
   if(!snap.exists()){
-    app.innerHTML = "<h1>user not found</h1>";
+    app.innerHTML = "<h1>not found</h1>";
   } else {
     const d = snap.data();
 
     app.innerHTML = `
-      ${d.pfp ? `<img src="${d.pfp}" width="100">` : ""}
+      ${d.pfp ? `<img src="${d.pfp}" width="90">` : ""}
       <h1>${d.username}</h1>
       <p>${d.bio || ""}</p>
-      <div class="links">
-        ${(d.links || []).map(l => `
-          <a href="${l.url}" target="_blank">${l.title}</a>
+      <div>
+        ${(d.links || []).map(l=>`
+          <a href="${l.url}" target="_blank">${l.title}</a><br>
         `).join("")}
       </div>
     `;
@@ -158,6 +140,10 @@ function showLogin(){
     <h2>biolnk</h2>
     <button onclick="loginDiscord()">Login with Discord</button>
   `;
+
+  if(user){
+    loadEditor();
+  }
 }
 
 /* =========================
@@ -165,29 +151,35 @@ function showLogin(){
 ========================= */
 function loadEditor(){
 
-  const id = discordUser.id;
+  const id = user.id;
 
   app.innerHTML = `
-    <h1>edit profile</h1>
-
-    <p>Logged in as <b>${discordUser.username}</b></p>
+    <h2>editor</h2>
+    <p>logged in as <b>${user.username}</b></p>
 
     <input id="username" placeholder="username">
     <input id="bio" placeholder="bio">
 
-    <div id="links"></div>
-
-    <div class="upload" id="uploadBox">upload image</div>
-
+    <div class="upload" id="upload">upload image</div>
     <img id="preview" width="80" style="display:none">
 
-    <button onclick="addLink()">+ link</button>
-    <button onclick="save()">save</button>
+    <div id="links"></div>
+    <button id="add">+ link</button>
+    <button id="save">save</button>
 
     <p id="out"></p>
   `;
 
-  /* load existing */
+  const username = document.getElementById("username");
+  const bio = document.getElementById("bio");
+  const links = document.getElementById("links");
+  const preview = document.getElementById("preview");
+  const upload = document.getElementById("upload");
+  const out = document.getElementById("out");
+
+  let file = null;
+
+  /* LOAD DATA */
   getDoc(doc(db,"users",id)).then(snap=>{
     if(snap.exists()){
       const d = snap.data();
@@ -196,66 +188,64 @@ function loadEditor(){
     }
   });
 
-  window.addLink = () => {
-    const div = document.createElement("div");
-    div.innerHTML = `
+  /* IMAGE UPLOAD */
+  upload.onclick = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+
+    input.onchange = e => {
+      file = e.target.files[0];
+
+      const reader = new FileReader();
+      reader.onload = ev => {
+        preview.src = ev.target.result;
+        preview.style.display = "block";
+      };
+      reader.readAsDataURL(file);
+    };
+
+    input.click();
+  };
+
+  /* ADD LINK */
+  document.getElementById("add").onclick = () => {
+    const row = document.createElement("div");
+    row.innerHTML = `
       <input placeholder="title">
       <input placeholder="url">
     `;
-    links.appendChild(div);
+    links.appendChild(row);
   };
 
-  window.save = async () => {
+  /* SAVE */
+  document.getElementById("save").onclick = async () => {
 
-    await setDoc(doc(db,"users",id),{
+    let img = "";
+
+    if(file){
+      img = await new Promise(r=>{
+        const fr = new FileReader();
+        fr.onload = e => r(e.target.result);
+        fr.readAsDataURL(file);
+      });
+    }
+
+    const data = {
       username: username.value,
       bio: bio.value,
-      links: [...links.children].map(r=>{
-        return {
-          title: r.children[0].value,
-          url: r.children[1].value
-        };
-      })
-    });
+      pfp: img,
+      links: [...links.children].map(r=>({
+        title: r.children[0].value,
+        url: r.children[1].value
+      }))
+    };
+
+    await setDoc(doc(db,"users",id), data);
 
     out.innerText = location.origin + location.pathname + "#/" + id;
   };
 }
-
-/* =========================
-   STARS
-========================= */
-function stars(){
-  const c = bg;
-  const ctx = c.getContext("2d");
-
-  c.width = innerWidth;
-  c.height = innerHeight;
-
-  let s = Array.from({length:120},()=>({
-    x:Math.random()*c.width,
-    y:Math.random()*c.height,
-    v:Math.random()*0.5
-  }));
-
-  function loop(){
-    ctx.fillStyle="#000";
-    ctx.fillRect(0,0,c.width,c.height);
-
-    s.forEach(p=>{
-      p.y += p.v;
-      if(p.y > c.height) p.y = 0;
-
-      ctx.fillStyle="#fff";
-      ctx.fillRect(p.x,p.y,1.5,1.5);
-    });
-
-    requestAnimationFrame(loop);
-  }
-  loop();
-}
-stars();
-
 </script>
 
 </body>
