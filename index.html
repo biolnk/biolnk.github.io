@@ -18,7 +18,6 @@ body{
   overflow:hidden;
 }
 
-/* splash */
 #splash{
   position:fixed;inset:0;
   display:flex;align-items:center;justify-content:center;
@@ -28,7 +27,6 @@ body{
 }
 @keyframes fadeOut{to{opacity:0;visibility:hidden}}
 
-/* cursor glow */
 .cursor{
   position:fixed;
   width:200px;height:200px;
@@ -37,10 +35,8 @@ body{
   transform:translate(-50%,-50%);
 }
 
-/* canvas */
 canvas{position:fixed;top:0;left:0}
 
-/* card */
 .center{
   position:absolute;
   top:50%;left:50%;
@@ -55,8 +51,6 @@ canvas{position:fixed;top:0;left:0}
 
   border:1px solid rgba(255,255,255,0.15);
   box-shadow:0 0 40px rgba(255,255,255,0.05);
-
-  transition:transform .1s;
 }
 
 h1{
@@ -67,7 +61,6 @@ h1{
     0 0 40px #4488ff;
 }
 
-/* links */
 .links a{
   display:block;margin:10px auto;padding:12px;
   border-radius:20px;text-decoration:none;
@@ -80,7 +73,6 @@ h1{
   background:#fff;color:#000;
 }
 
-/* inputs */
 input,select{
   width:100%;padding:10px;margin:6px 0;
   background:#111;border:1px solid #333;
@@ -91,11 +83,10 @@ button{
   margin-top:10px;padding:10px 20px;
   border-radius:20px;border:1px solid #fff;
   background:transparent;color:#fff;
-  cursor:pointer;transition:.2s;
+  cursor:pointer;
 }
 button:hover{
   background:#fff;color:#000;
-  transform:scale(1.08);
 }
 
 .upload{
@@ -105,7 +96,6 @@ button:hover{
   margin:10px 0;
 }
 
-/* themes */
 .theme-space{
   color:#8ab4ff;
   text-shadow:0 0 12px #8ab4ff, 0 0 30px #4f7cff;
@@ -132,13 +122,16 @@ const db = getFirestore(initializeApp({
 const app = document.getElementById("app");
 const cursor = document.getElementById("cursor");
 
-// cursor
+// cursor glow
+let mouse={x:0,y:0};
 document.addEventListener("mousemove",e=>{
+  mouse.x=e.clientX;
+  mouse.y=e.clientY;
   cursor.style.left=e.clientX+"px";
   cursor.style.top=e.clientY+"px";
 });
 
-// parallax
+// parallax card
 document.addEventListener("mousemove",e=>{
   const x=(e.clientX/window.innerWidth-.5)*20;
   const y=(e.clientY/window.innerHeight-.5)*20;
@@ -147,16 +140,15 @@ document.addEventListener("mousemove",e=>{
 });
 
 // sounds
-const ctx = new (window.AudioContext||window.webkitAudioContext)();
+const ctxAudio = new (window.AudioContext||window.webkitAudioContext)();
 function beep(freq){
-  const o=ctx.createOscillator();
-  const g=ctx.createGain();
-  o.connect(g);g.connect(ctx.destination);
+  const o=ctxAudio.createOscillator();
+  const g=ctxAudio.createGain();
+  o.connect(g);g.connect(ctxAudio.destination);
   o.frequency.value=freq;
   o.start();
-  g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.1);
+  g.gain.exponentialRampToValueAtTime(0.0001,ctxAudio.currentTime+0.1);
 }
-
 document.addEventListener("mouseover",()=>beep(200));
 document.addEventListener("click",()=>beep(400));
 
@@ -167,7 +159,7 @@ function icon(url){
   return "fa-solid fa-link";
 }
 
-// 🌌 stars + planets
+// 🌌 STAR SYSTEM (depth + interaction + milky way)
 function stars(){
   const c=bg,ctx=c.getContext("2d");
 
@@ -178,85 +170,98 @@ function stars(){
   resize();
   addEventListener("resize",resize);
 
-  let stars=Array.from({length:120},()=>({
-    x:Math.random()*c.width,
-    y:Math.random()*c.height,
-    r:Math.random()*1.5,
-    vx:(Math.random()-.5)*0.1,
-    vy:(Math.random()-.5)*0.1
-  }));
+  // layers = depth
+  let layers=[
+    {count:80,speed:0.2,size:1},
+    {count:50,speed:0.4,size:1.5},
+    {count:30,speed:0.7,size:2}
+  ];
 
-  let planets=Array.from({length:4},(_,i)=>({
-    x:Math.random()*c.width,
-    y:Math.random()*c.height,
-    r:20+Math.random()*30,
-    angle:Math.random()*Math.PI*2,
-    speed:0.002+(i*0.001),
-    orbit:40+Math.random()*80,
-    color:`hsl(${Math.random()*360},70%,60%)`
-  }));
+  let stars=layers.flatMap(l=>
+    Array.from({length:l.count},()=>({
+      x:Math.random()*c.width,
+      y:Math.random()*c.height,
+      vx:(Math.random()-.5)*l.speed,
+      vy:(Math.random()-.5)*l.speed,
+      size:l.size
+    }))
+  );
 
   function loop(){
     ctx.fillStyle="#000";
     ctx.fillRect(0,0,c.width,c.height);
 
+    // 🌌 milky way band
+    const g=ctx.createLinearGradient(0,0,c.width,c.height);
+    g.addColorStop(0,"rgba(80,80,150,0.05)");
+    g.addColorStop(0.5,"rgba(150,150,255,0.12)");
+    g.addColorStop(1,"rgba(80,80,150,0.05)");
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,c.width,c.height);
+
     // stars
     stars.forEach(a=>{
+      // movement
       a.x+=a.vx;
       a.y+=a.vy;
-      if(a.x<0||a.x>c.width)a.vx*=-1;
-      if(a.y<0||a.y>c.height)a.vy*=-1;
 
+      // wrap edges
+      if(a.x<0)a.x=c.width;
+      if(a.x>c.width)a.x=0;
+      if(a.y<0)a.y=c.height;
+      if(a.y>c.height)a.y=0;
+
+      // mouse interaction
+      const dx=mouse.x-a.x;
+      const dy=mouse.y-a.y;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+
+      if(dist<120){
+        a.x-=dx*0.002;
+        a.y-=dy*0.002;
+      }
+
+      // glow
+      const glow=ctx.createRadialGradient(a.x,a.y,0,a.x,a.y,a.size*4);
+      glow.addColorStop(0,"rgba(255,255,255,0.9)");
+      glow.addColorStop(1,"transparent");
+
+      ctx.fillStyle=glow;
       ctx.beginPath();
-      ctx.arc(a.x,a.y,a.r,0,Math.PI*2);
+      ctx.arc(a.x,a.y,a.size*4,0,Math.PI*2);
+      ctx.fill();
+
       ctx.fillStyle="white";
+      ctx.beginPath();
+      ctx.arc(a.x,a.y,a.size,0,Math.PI*2);
       ctx.fill();
     });
 
-    // constellations
-    stars.forEach(a=>{
-      stars.forEach(b=>{
-        const dx=a.x-b.x,dy=a.y-b.y;
+    // constellations (only near stars)
+    for(let i=0;i<stars.length;i++){
+      for(let j=i+1;j<stars.length;j++){
+        const dx=stars[i].x-stars[j].x;
+        const dy=stars[i].y-stars[j].y;
         const d=Math.sqrt(dx*dx+dy*dy);
-        if(d<100){
-          ctx.strokeStyle="rgba(255,255,255,"+(1-d/100)+")";
+        if(d<90){
+          ctx.strokeStyle="rgba(255,255,255,"+(1-d/90)+")";
           ctx.beginPath();
-          ctx.moveTo(a.x,a.y);
-          ctx.lineTo(b.x,b.y);
+          ctx.moveTo(stars[i].x,stars[i].y);
+          ctx.lineTo(stars[j].x,stars[j].y);
           ctx.stroke();
         }
-      });
-    });
-
-    // planets
-    planets.forEach(p=>{
-      p.angle+=p.speed;
-      let px=p.x+Math.cos(p.angle)*p.orbit;
-      let py=p.y+Math.sin(p.angle)*p.orbit;
-
-      const g=ctx.createRadialGradient(px,py,0,px,py,p.r*2);
-      g.addColorStop(0,p.color);
-      g.addColorStop(1,"transparent");
-
-      ctx.fillStyle=g;
-      ctx.beginPath();
-      ctx.arc(px,py,p.r*2,0,Math.PI*2);
-      ctx.fill();
-
-      ctx.fillStyle=p.color;
-      ctx.beginPath();
-      ctx.arc(px,py,p.r,0,Math.PI*2);
-      ctx.fill();
-    });
+      }
+    }
 
     // shooting stars
-    if(Math.random()<0.003){
+    if(Math.random()<0.004){
       ctx.strokeStyle="white";
+      ctx.lineWidth=2;
       ctx.beginPath();
       let x=Math.random()*c.width;
       let y=Math.random()*c.height;
       ctx.moveTo(x,y);
-      ctx.lineTo(x+80,y+20);
+      ctx.lineTo(x+120,y+40);
       ctx.stroke();
     }
 
