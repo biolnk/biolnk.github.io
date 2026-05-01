@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Profile Generator</title>
+<title>BioLnk</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
@@ -17,6 +17,7 @@ button{margin-top:10px;padding:10px 20px;border-radius:20px;border:1px solid #ff
 button:hover{background:#fff;color:#000}
 .links a{display:block;margin:8px auto;padding:10px;border:1px solid #fff;border-radius:20px;text-decoration:none;color:#fff;width:200px}
 .generated{display:block;margin-top:15px;font-size:12px;color:#0af;word-break:break-all}
+img{border-radius:50%;margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -29,9 +30,13 @@ button:hover{background:#fff;color:#000}
 
   <input id="username" placeholder="username">
   <input id="bio" placeholder="bio">
+  <input id="pfp" placeholder="profile image URL">
 
   <div id="linksContainer">
-    <input class="link" placeholder="link (https://...)">
+    <div class="linkRow">
+      <input placeholder="link title">
+      <input class="link" placeholder="https://...">
+    </div>
   </div>
 
   <button onclick="addLink()">+ add link</button>
@@ -53,24 +58,36 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// add link row
 window.addLink = () => {
-  const input = document.createElement('input');
-  input.placeholder='link (https://...)';
-  input.className='link';
-  document.getElementById('linksContainer').appendChild(input);
+  const div = document.createElement('div');
+  div.className = "linkRow";
+  div.innerHTML = `
+    <input placeholder="link title">
+    <input class="link" placeholder="https://...">
+  `;
+  document.getElementById('linksContainer').appendChild(div);
 };
 
+// save profile
 window.createProfile = async () => {
   const username = document.getElementById('username').value;
   const bio = document.getElementById('bio').value;
+  const pfp = document.getElementById('pfp').value;
 
-  const links = [...document.querySelectorAll('.link')]
-    .map(i => i.value)
-    .filter(v => v);
+  const links = [...document.querySelectorAll('.linkRow')]
+    .map(row => {
+      const title = row.children[0].value;
+      const url = row.children[1].value;
+      if (!title || !url) return null;
+      return { title, url };
+    })
+    .filter(x => x);
 
   await setDoc(doc(db, "users", username), {
-    bio: bio,
-    links: links
+    bio,
+    pfp,
+    links
   });
 
   const url = `${location.origin}${location.pathname}?user=${username}`;
@@ -120,10 +137,11 @@ if (params.get("user")) {
     document.body.innerHTML = `
     <canvas id="bg"></canvas>
     <div class="center">
+      ${data.pfp ? `<img src="${data.pfp}" width="100">` : ""}
       <h1>${username}</h1>
       <p>${data.bio || ''}</p>
       <div class="links">
-        ${data.links.map(l => `<a href="${l}" target="_blank">${l}</a>`).join('')}
+        ${data.links.map(l => `<a href="${l.url}" target="_blank">${l.title}</a>`).join('')}
       </div>
     </div>`;
 
