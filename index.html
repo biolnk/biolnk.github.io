@@ -1,3 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>biolnk</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<!-- 🔒 CSP -->
+<meta http-equiv="Content-Security-Policy"
+content="
+default-src 'self';
+img-src 'self' data:;
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
+font-src https://fonts.gstatic.com;
+script-src 'self' https://www.gstatic.com;
+connect-src https://firestore.googleapis.com;
+">
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:'Space Grotesk',sans-serif;
+  background:#000;
+  color:#fff;
+  overflow:hidden;
+}
+
+.center{
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  text-align:center;
+  width:90%;max-width:420px;
+  padding:25px;
+  border-radius:24px;
+  background:rgba(10,10,30,0.4);
+  backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,0.15);
+}
+
+.links a{
+  display:block;margin:10px auto;padding:12px;
+  border-radius:20px;text-decoration:none;
+  color:#fff;width:240px;
+  border:1px solid rgba(255,255,255,0.2);
+}
+
+input{width:100%;padding:10px;margin:6px 0;background:#111;color:#fff;border:1px solid #333}
+button{padding:10px 20px;margin-top:10px}
+
+canvas{position:fixed;top:0;left:0}
+</style>
+</head>
+
+<body>
+
+<canvas id="bg"></canvas>
+<div class="center" id="app"></div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -9,82 +72,29 @@ const db = getFirestore(initializeApp({
 }));
 
 const app = document.getElementById("app");
-const cursor = document.getElementById("cursor");
 
-let mouse={x:0,y:0};
-
-// cursor
-document.addEventListener("mousemove",e=>{
-  mouse.x=e.clientX;
-  mouse.y=e.clientY;
-  cursor.style.left=e.clientX+"px";
-  cursor.style.top=e.clientY+"px";
-});
-
-// parallax
-document.addEventListener("mousemove",e=>{
-  const x=(e.clientX/window.innerWidth-.5)*20;
-  const y=(e.clientY/window.innerHeight-.5)*20;
-  document.querySelector(".center").style.transform =
-    `translate(-50%,-50%) rotateX(${-y}deg) rotateY(${x}deg)`;
-});
-
-// safe helpers
-function escapeHTML(str){
-  return String(str).replace(/[&<>"']/g, c => ({
-    "&":"&amp;",
-    "<":"&lt;",
-    ">":"&gt;",
-    '"':"&quot;",
-    "'":"&#39;"
-  }[c]));
-}
-
+// 🔒 helpers
 function safeURL(input){
   try{
-    const url = new URL(input, location.origin);
+    const url=new URL(input,location.origin);
     if(!["http:","https:"].includes(url.protocol)) return null;
     return url.href;
-  }catch{
-    return null;
-  }
+  }catch{return null;}
 }
 
-// typing effect (safe)
 function typeText(el,text){
   el.textContent="";
   let i=0;
-  function t(){
+  (function t(){
     if(i<text.length){
       el.textContent+=text[i++];
       setTimeout(t,20);
     }
-  }
-  t();
-}
-
-// image resize
-function resizeToBase64(file){
-  return new Promise(r=>{
-    const img=new Image();
-    const fr=new FileReader();
-    fr.onload=e=>img.src=e.target.result;
-    img.onload=()=>{
-      const c=document.createElement("canvas");
-      const max=200;
-      let w=img.width,h=img.height;
-      if(w>h&&w>max){h*=max/w;w=max}
-      if(h>w&&h>max){w*=max/h;h=max}
-      c.width=w;c.height=h;
-      c.getContext("2d").drawImage(img,0,0,w,h);
-      r(c.toDataURL("image/jpeg",0.6));
-    };
-    fr.readAsDataURL(file);
-  });
+  })();
 }
 
 // routing
-const user = location.hash.replace("#/","");
+const user=location.hash.replace("#/","");
 
 if(user){
   const snap=await getDoc(doc(db,"users",user));
@@ -93,31 +103,28 @@ if(user){
     app.textContent="not found";
   }else{
     const d=snap.data();
-    document.body.className=d.theme||"";
 
-    app.innerHTML="";
-
-    const container=document.createElement("div");
+    const c=document.createElement("div");
 
     if(d.pfp){
       const img=document.createElement("img");
       img.src=d.pfp;
       img.width=100;
-      container.appendChild(img);
+      c.appendChild(img);
     }
 
     const name=document.createElement("h1");
     name.textContent=user;
-    container.appendChild(name);
+    c.appendChild(name);
 
-    const bioEl=document.createElement("p");
-    container.appendChild(bioEl);
+    const bio=document.createElement("p");
+    c.appendChild(bio);
 
-    const linksDiv=document.createElement("div");
-    linksDiv.className="links";
+    const links=document.createElement("div");
+    links.className="links";
 
     (d.links||[]).forEach(l=>{
-      const safe = safeURL(l.url);
+      const safe=safeURL(l.url);
       if(!safe) return;
 
       const a=document.createElement("a");
@@ -125,87 +132,56 @@ if(user){
       a.target="_blank";
       a.rel="noopener noreferrer";
 
-      const iconEl=document.createElement("i");
-      iconEl.className = "fa-solid fa-link";
-
-      a.appendChild(iconEl);
-      a.appendChild(document.createTextNode(" "+l.title));
-
-      linksDiv.appendChild(a);
+      a.appendChild(document.createTextNode(l.title));
+      links.appendChild(a);
     });
 
-    container.appendChild(linksDiv);
-    app.appendChild(container);
+    c.appendChild(links);
+    app.appendChild(c);
 
-    typeText(bioEl, d.bio || "");
+    typeText(bio,d.bio||"");
   }
 
 }else{
 
 app.innerHTML=`
 <h1>create</h1>
-<input id="usernameInput" placeholder="username">
+<input id="username" placeholder="username">
 <input id="bio" placeholder="bio">
-
-<div class="upload" id="uploadBox">upload image</div>
-<img id="preview" width="80" style="display:none">
-
-<select id="theme">
-<option value="">default</option>
-<option value="theme-space">space</option>
-</select>
-
 <div id="links"></div>
-
-<button onclick="addLink()">+ link</button>
-<button onclick="saveProfile()">save</button>
-
+<button id="add">+ link</button>
+<button id="save">save</button>
 <p id="out"></p>
 `;
 
-let file=null;
+add.onclick=()=>{
+  if(links.children.length>=10)return alert("max 10 links");
 
-uploadBox.onclick=()=>{
-  const i=document.createElement("input");
-  i.type="file";i.accept="image/*";
-  i.onchange=e=>handle(e.target.files[0]);
-  i.click();
-};
-
-function handle(f){
-  file=f;
-  const r=new FileReader();
-  r.onload=e=>{
-    preview.src=e.target.result;
-    preview.style.display="block";
-  };
-  r.readAsDataURL(f);
-}
-
-window.addLink=()=>{
   const d=document.createElement("div");
-  d.innerHTML=`<input placeholder="title"><input placeholder="url">`;
+  const t=document.createElement("input");
+  const u=document.createElement("input");
+
+  t.placeholder="title";
+  u.placeholder="url";
+
+  d.append(t,u);
   links.appendChild(d);
 };
 
-window.saveProfile=async()=>{
-  const u=usernameInput.value.trim();
+save.onclick=async()=>{
+  const u=username.value.trim();
   if(!u)return alert("username");
 
-  let img="";
-  if(file) img=await resizeToBase64(file);
+  const linkData=[...links.children].map(r=>{
+    const t=r.children[0].value;
+    const url=safeURL(r.children[1].value);
+    if(!t||!url)return null;
+    return {title:t,url};
+  }).filter(x=>x);
 
   await setDoc(doc(db,"users",u),{
-    bio: escapeHTML(bio.value),
-    pfp: img,
-    theme: theme.value,
-    links:[...links.children].map(r=>{
-      const t = escapeHTML(r.children[0].value);
-      const urlInput = r.children[1].value;
-      const safe = safeURL(urlInput);
-      if(!t || !safe) return null;
-      return {title:t,url:safe};
-    }).filter(x=>x)
+    bio:bio.value.slice(0,200),
+    links:linkData
   });
 
   out.textContent=location.origin+location.pathname+"#/"+u;
@@ -213,6 +189,31 @@ window.saveProfile=async()=>{
 
 }
 
-// keep your stars()
+// ⭐ simple star bg
+function stars(){
+  const c=bg,ctx=c.getContext("2d");
+  c.width=innerWidth;c.height=innerHeight;
+
+  let s=Array.from({length:120},()=>({
+    x:Math.random()*c.width,
+    y:Math.random()*c.height
+  }));
+
+  function loop(){
+    ctx.fillStyle="#000";
+    ctx.fillRect(0,0,c.width,c.height);
+
+    s.forEach(p=>{
+      ctx.fillStyle="white";
+      ctx.fillRect(p.x,p.y,2,2);
+    });
+
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
 stars();
 </script>
+
+</body>
+</html>
