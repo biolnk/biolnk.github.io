@@ -6,8 +6,10 @@
 <title>biolnk</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <style>
+*{box-sizing:border-box}
 body{
   margin:0;
   font-family:'Space Grotesk',sans-serif;
@@ -15,18 +17,38 @@ body{
   color:#fff;
 }
 
+/* canvas */
+canvas{
+  position:fixed;
+  top:0;left:0;
+  z-index:-1;
+}
+
+/* card */
 .center{
   position:absolute;
   top:50%;left:50%;
   transform:translate(-50%,-50%);
-  width:90%;
-  max-width:420px;
   text-align:center;
+  width:90%;max-width:420px;
   padding:20px;
   border-radius:16px;
   background:rgba(0,0,0,0.6);
   border:1px solid rgba(255,255,255,0.1);
+  animation:fadeIn .4s ease;
 }
+
+@keyframes fadeIn{
+  from{opacity:0;transform:translate(-50%,-55%)}
+  to{opacity:1;transform:translate(-50%,-50%)}
+}
+
+h1{
+  font-size:40px;
+  margin-bottom:10px;
+}
+
+p{color:#aaa}
 
 input,select{
   width:100%;
@@ -35,27 +57,56 @@ input,select{
   background:#111;
   border:1px solid #333;
   color:#fff;
+  border-radius:8px;
 }
 
 button{
   margin-top:10px;
-  padding:10px 16px;
+  padding:10px 20px;
+  border-radius:16px;
   border:1px solid #fff;
   background:transparent;
   color:#fff;
   cursor:pointer;
 }
-button:hover{background:#fff;color:#000}
+button:hover{
+  background:#fff;
+  color:#000;
+}
+
+/* links */
+.links a{
+  display:block;
+  margin:8px auto;
+  padding:10px;
+  border-radius:16px;
+  text-decoration:none;
+  color:#fff;
+  width:220px;
+  border:1px solid rgba(255,255,255,0.2);
+}
+.links a:hover{
+  background:#fff;
+  color:#000;
+}
+
+.links i{margin-right:8px}
+
+img{
+  border-radius:50%;
+  margin-bottom:10px;
+}
 
 .upload{
   border:2px dashed #555;
-  padding:14px;
+  padding:16px;
+  border-radius:10px;
   margin:10px 0;
   cursor:pointer;
 }
+.upload:hover{border-color:#fff}
 
-img{border-radius:50%}
-
+/* themes */
 .theme-purple{color:#c084fc}
 .theme-blue{color:#38bdf8}
 .theme-red{color:#f87171}
@@ -66,6 +117,7 @@ img{border-radius:50%}
 
 <body>
 
+<canvas id="bg"></canvas>
 <div class="center" id="app">loading...</div>
 
 <script type="module">
@@ -80,11 +132,11 @@ const db = getFirestore(initializeApp({
 
 const app = document.getElementById("app");
 
+/* =========================
+   AUTH (DISCORD FROM YOUR WORKER)
+========================= */
 let user = JSON.parse(localStorage.getItem("discordUser") || "null");
 
-/* =========================
-   DISCORD LOGIN
-========================= */
 window.loginDiscord = () => {
   const popup = window.open(
     "https://biolnk.snutdddee.workers.dev/login",
@@ -102,32 +154,93 @@ window.loginDiscord = () => {
   });
 };
 
+window.logout = () => {
+  localStorage.removeItem("discordUser");
+  user = null;
+  location.hash = "";
+  showLogin();
+};
+
 /* =========================
-   ROUTE
+   ROUTING
 ========================= */
 const route = location.hash.replace("#/","").toLowerCase();
 
 /* =========================
-   LOAD PROFILE
+   ICONS
 ========================= */
-async function loadProfile(username){
-  const snap = await getDoc(doc(db,"users",username));
+function icon(url){
+  if(url.includes("github")) return "fa-brands fa-github";
+  if(url.includes("discord")) return "fa-brands fa-discord";
+  if(url.includes("youtube")) return "fa-brands fa-youtube";
+  return "fa-solid fa-link";
+}
+
+/* =========================
+   STAR BACKGROUND
+========================= */
+function stars(){
+  const c = bg;
+  const ctx = c.getContext("2d");
+
+  function resize(){
+    c.width = innerWidth;
+    c.height = innerHeight;
+  }
+
+  resize();
+  addEventListener("resize", resize);
+
+  let s = Array.from({length:70},()=>({
+    x:Math.random()*c.width,
+    y:Math.random()*c.height,
+    v:Math.random()*0.4
+  }));
+
+  function loop(){
+    ctx.fillStyle="#000";
+    ctx.fillRect(0,0,c.width,c.height);
+
+    s.forEach(star=>{
+      star.y += star.v;
+      if(star.y > c.height){
+        star.y = 0;
+        star.x = Math.random()*c.width;
+      }
+      ctx.fillStyle="#fff";
+      ctx.fillRect(star.x,star.y,1.5,1.5);
+    });
+
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+}
+stars();
+
+/* =========================
+   PROFILE VIEW
+========================= */
+async function loadProfile(name){
+  const snap = await getDoc(doc(db,"users",name));
 
   if(!snap.exists()){
-    app.innerHTML = "<h1>not found</h1>";
+    app.innerHTML = "<h1>user not found</h1>";
     return;
   }
 
   const d = snap.data();
 
   app.innerHTML = `
-    ${d.pfp ? `<img src="${d.pfp}" width="90">` : ""}
-    <h1 class="${d.theme || ""}">${d.username}</h1>
-    <p>${d.bio || ""}</p>
+    ${d.pfp ? `<img src="${d.pfp}" width="100">` : ""}
+    <h1 class="${d.theme||""}">${d.username}</h1>
+    <p>${d.bio||""}</p>
 
-    <div>
-      ${(d.links || []).map(l=>`
-        <a href="${l.url}" target="_blank">${l.title}</a><br>
+    <div class="links">
+      ${(d.links||[]).map(l=>`
+        <a href="${l.url}" target="_blank">
+          <i class="${icon(l.url)}"></i> ${l.title}
+        </a>
       `).join("")}
     </div>
   `;
@@ -151,6 +264,8 @@ function loadEditor(){
   app.innerHTML = `
     <h2>editor</h2>
     <p>logged in as <b>${user.username}</b></p>
+
+    <button onclick="logout()">logout</button>
 
     <input id="username" placeholder="username">
     <input id="bio" placeholder="bio">
@@ -179,13 +294,12 @@ function loadEditor(){
   const bio = document.getElementById("bio");
   const theme = document.getElementById("theme");
   const links = document.getElementById("links");
-  const preview = document.getElementById("preview");
   const upload = document.getElementById("upload");
+  const preview = document.getElementById("preview");
   const out = document.getElementById("out");
 
   let file = null;
 
-  /* LOAD EXISTING PROFILE */
   const uname = user.username.toLowerCase();
 
   getDoc(doc(db,"users",uname)).then(snap=>{
@@ -197,7 +311,6 @@ function loadEditor(){
     }
   });
 
-  /* IMAGE UPLOAD */
   upload.onclick = () => {
     const i = document.createElement("input");
     i.type = "file";
@@ -205,7 +318,6 @@ function loadEditor(){
 
     i.onchange = e => {
       file = e.target.files[0];
-
       const fr = new FileReader();
       fr.onload = ev => {
         preview.src = ev.target.result;
@@ -217,7 +329,6 @@ function loadEditor(){
     i.click();
   };
 
-  /* LINKS */
   document.getElementById("add").onclick = () => {
     const r = document.createElement("div");
     r.innerHTML = `
@@ -227,9 +338,8 @@ function loadEditor(){
     links.appendChild(r);
   };
 
-  /* SAVE */
   document.getElementById("save").onclick = async () => {
-    try {
+    try{
 
       let img = "";
 
@@ -243,12 +353,12 @@ function loadEditor(){
 
       const uname = username.value.trim().toLowerCase();
 
-      await setDoc(doc(db,"users",uname), {
+      await setDoc(doc(db,"users",uname),{
         username: uname,
         bio: bio.value,
         theme: theme.value,
         pfp: img || "",
-        ownerId: user.id, // security marker
+        ownerId: user.id,
         links: [...links.children].map(r=>({
           title:r.children[0].value,
           url:r.children[1].value
@@ -256,12 +366,11 @@ function loadEditor(){
       });
 
       out.innerText = "saved ✔";
-
       location.hash = "#/" + uname;
 
-    } catch(err){
-      console.error(err);
-      out.innerText = "save failed ❌ check console";
+    } catch(e){
+      console.error(e);
+      out.innerText = "save failed ❌";
     }
   };
 }
@@ -271,21 +380,11 @@ function loadEditor(){
 ========================= */
 (async function start(){
 
-  try{
-
-    if(route){
-      await loadProfile(route);
-    } else {
-      if(user){
-        loadEditor();
-      } else {
-        showLogin();
-      }
-    }
-
-  } catch(e){
-    console.error(e);
-    app.innerHTML = "app crashed ❌";
+  if(route){
+    await loadProfile(route);
+  } else {
+    if(user) loadEditor();
+    else showLogin();
   }
 
 })();
