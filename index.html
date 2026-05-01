@@ -10,21 +10,18 @@
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:'Space Grotesk',sans-serif;background:#000;color:#fff;overflow:hidden;transition:.3s}
+body{margin:0;font-family:'Space Grotesk',sans-serif;background:#000;color:#fff}
 canvas{position:fixed;top:0;left:0;z-index:-1}
 .center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:90%;max-width:420px}
-h1{font-size:52px;text-shadow:0 0 10px currentColor}
+h1{font-size:42px;text-shadow:0 0 10px currentColor}
 input,select{width:100%;padding:10px;margin:6px 0;background:#111;border:1px solid #333;color:#fff;border-radius:8px}
 button{margin-top:10px;padding:10px 20px;border-radius:20px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer}
 button:hover{background:#fff;color:#000}
-
 .linkRow{display:flex;gap:6px}
 .links a{display:block;margin:8px auto;padding:10px;border:1px solid #fff;border-radius:20px;text-decoration:none;color:#fff;width:220px}
 .links a:hover{background:#fff;color:#000}
 .links i{margin-right:8px}
-
 img{border-radius:50%;margin-bottom:10px}
-
 .theme-purple{color:#c084fc}
 .theme-blue{color:#38bdf8}
 </style>
@@ -35,9 +32,10 @@ img{border-radius:50%;margin-bottom:10px}
 <div class="center" id="app"></div>
 
 <script>
-const app=document.getElementById("app");
+// ---------- SAFE ELEMENT ----------
+const app = document.getElementById("app");
 
-// ICONS
+// ---------- ICONS ----------
 function icon(url){
   if(url.includes("github")) return "fa-brands fa-github";
   if(url.includes("discord")) return "fa-brands fa-discord";
@@ -45,21 +43,28 @@ function icon(url){
   return "fa-solid fa-link";
 }
 
-// PARTICLES
+// ---------- PARTICLES ----------
 function particles(){
   const c=document.getElementById('bg');
   const ctx=c.getContext('2d');
   function resize(){c.width=innerWidth;c.height=innerHeight}
-  resize();addEventListener('resize',resize);
+  resize();
+  window.addEventListener('resize',resize);
 
-  let p=Array.from({length:80},()=>({x:Math.random()*c.width,y:Math.random()*c.height,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3}));
+  let p=Array.from({length:60},()=>({
+    x:Math.random()*c.width,
+    y:Math.random()*c.height,
+    vx:(Math.random()-.5)*0.3,
+    vy:(Math.random()-.5)*0.3
+  }));
 
   function loop(){
     ctx.clearRect(0,0,c.width,c.height);
     p.forEach(pt=>{
-      pt.x+=pt.vx;pt.y+=pt.vy;
+      pt.x+=pt.vx; pt.y+=pt.vy;
       if(pt.x<0||pt.x>c.width)pt.vx*=-1;
       if(pt.y<0||pt.y>c.height)pt.vy*=-1;
+      ctx.fillStyle="white";
       ctx.fillRect(pt.x,pt.y,1.5,1.5);
     });
     requestAnimationFrame(loop);
@@ -67,34 +72,41 @@ function particles(){
   loop();
 }
 
-// ROUTING (#/user)
-const route=location.hash.replace("#/","");
+// ---------- ROUTING ----------
+const route = location.hash.replace("#/","");
 
-// VIEW PROFILE
+// ---------- VIEW PROFILE ----------
 if(route){
-  const data=JSON.parse(localStorage.getItem("profile_"+route));
-  if(!data){
-    app.innerHTML="<h1>not found</h1>";
-  }else{
-    document.body.className=data.theme||"";
-    app.innerHTML=`
-      ${data.pfp?`<img src="${data.pfp}" width="100">`:""}
+  const raw = localStorage.getItem("profile_"+route);
+
+  if(!raw){
+    app.innerHTML = "<h1>user not found</h1>";
+    particles();
+  } else {
+    const data = JSON.parse(raw);
+
+    document.body.className = data.theme || "";
+
+    app.innerHTML = `
+      ${data.pfp ? `<img src="${data.pfp}" width="100">` : ""}
       <h1>${route}</h1>
-      <p>${data.bio||""}</p>
+      <p>${data.bio || ""}</p>
       <div class="links">
         ${data.links.map(l=>`
           <a href="${l.url}" target="_blank">
             <i class="${icon(l.url)}"></i> ${l.title}
-          </a>`).join("")}
+          </a>
+        `).join("")}
       </div>
     `;
-  }
-  particles();
-  return;
-}
 
-// EDITOR
-app.innerHTML=`
+    particles();
+  }
+
+} else {
+
+// ---------- EDITOR ----------
+app.innerHTML = `
 <h1>create</h1>
 
 <input id="username" placeholder="username">
@@ -114,73 +126,65 @@ app.innerHTML=`
   </div>
 </div>
 
-<button onclick="add()">+ link</button>
-<button onclick="save()">save</button>
-<button onclick="exportData()">export</button>
-<button onclick="importData()">import</button>
+<button onclick="addLink()">+ link</button>
+<button onclick="saveProfile()">save</button>
 
 <p id="out"></p>
 `;
 
-// ADD LINK
-window.add=()=>{
-  const d=document.createElement("div");
-  d.className="linkRow";
-  d.draggable=true;
-  d.innerHTML=`<input placeholder="title"><input placeholder="url">`;
+// ---------- ADD LINK ----------
+window.addLink = () => {
+  const d = document.createElement("div");
+  d.className = "linkRow";
+  d.draggable = true;
+  d.innerHTML = `<input placeholder="title"><input placeholder="url">`;
   document.getElementById("links").appendChild(d);
 };
 
-// DRAG
-let drag;
-document.addEventListener("dragstart",e=>{
-  if(e.target.classList.contains("linkRow")) drag=e.target;
+// ---------- DRAG ----------
+let dragged = null;
+
+document.addEventListener("dragstart", e => {
+  if(e.target.classList.contains("linkRow")){
+    dragged = e.target;
+  }
 });
-document.addEventListener("dragover",e=>{
+
+document.addEventListener("dragover", e => {
   e.preventDefault();
-  const c=document.getElementById("links");
-  const after=[...c.children].find(el=>e.clientY<el.offsetTop+el.offsetHeight/2);
-  c.insertBefore(drag,after);
+  const container = document.getElementById("links");
+  const after = [...container.children].find(el =>
+    e.clientY < el.getBoundingClientRect().top + el.offsetHeight/2
+  );
+  container.insertBefore(dragged, after);
 });
 
-// SAVE
-window.save=()=>{
-  const u=username.value.trim();
-  if(!u)return alert("username");
+// ---------- SAVE ----------
+window.saveProfile = () => {
+  const username = document.getElementById("username").value.trim();
+  if(!username) return alert("enter username");
 
-  const data={
-    bio:bio.value,
-    pfp:pfp.value,
-    theme:theme.value,
-    links:[...document.querySelectorAll(".linkRow")].map(r=>{
-      const t=r.children[0].value;
-      const url=r.children[1].value;
-      if(!t||!url)return null;
-      return {title:t,url};
-    }).filter(x=>x)
+  const data = {
+    bio: document.getElementById("bio").value,
+    pfp: document.getElementById("pfp").value,
+    theme: document.getElementById("theme").value,
+    links: [...document.querySelectorAll(".linkRow")]
+      .map(r=>{
+        const t=r.children[0].value;
+        const u=r.children[1].value;
+        if(!t || !u) return null;
+        return {title:t,url:u};
+      }).filter(x=>x)
   };
 
-  localStorage.setItem("profile_"+u,JSON.stringify(data));
-  out.innerText=location.origin+location.pathname+"#/"+
-u;
-};
+  localStorage.setItem("profile_"+username, JSON.stringify(data));
 
-// EXPORT
-window.exportData=()=>{
-  const u=username.value;
-  const data=localStorage.getItem("profile_"+u);
-  navigator.clipboard.writeText(data);
-  alert("copied");
-};
-
-// IMPORT
-window.importData=()=>{
-  const data=prompt("paste data");
-  const u=prompt("username");
-  localStorage.setItem("profile_"+u,data);
+  const url = location.origin + location.pathname + "#/" + username;
+  document.getElementById("out").innerText = url;
 };
 
 particles();
+}
 </script>
 
 </body>
