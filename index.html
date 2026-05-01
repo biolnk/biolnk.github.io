@@ -6,21 +6,18 @@
 <title>biolnk</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-<!-- 🔒 CSP -->
 <meta http-equiv="Content-Security-Policy"
 content="
 default-src 'self';
 img-src 'self' data:;
-style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
 font-src https://fonts.gstatic.com;
 script-src 'self' https://www.gstatic.com;
-connect-src https://firestore.googleapis.com;
+connect-src https://firestore.googleapis.com https://identitytoolkit.googleapis.com;
 ">
 
 <style>
-*{box-sizing:border-box}
 body{
   margin:0;
   font-family:'Space Grotesk',sans-serif;
@@ -37,20 +34,34 @@ body{
   width:90%;max-width:420px;
   padding:25px;
   border-radius:24px;
-  background:rgba(10,10,30,0.4);
+  background:rgba(20,20,40,0.4);
   backdrop-filter:blur(20px);
-  border:1px solid rgba(255,255,255,0.15);
+  border:1px solid rgba(255,255,255,0.1);
 }
 
 .links a{
-  display:block;margin:10px auto;padding:12px;
-  border-radius:20px;text-decoration:none;
-  color:#fff;width:240px;
+  display:block;
+  margin:10px auto;
+  padding:12px;
+  border-radius:20px;
+  color:#fff;
+  text-decoration:none;
   border:1px solid rgba(255,255,255,0.2);
 }
 
-input{width:100%;padding:10px;margin:6px 0;background:#111;color:#fff;border:1px solid #333}
-button{padding:10px 20px;margin-top:10px}
+input{
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  background:#111;
+  color:#fff;
+  border:1px solid #333;
+}
+
+button{
+  margin-top:10px;
+  padding:10px 20px;
+}
 
 canvas{position:fixed;top:0;left:0}
 </style>
@@ -64,16 +75,27 @@ canvas{position:fixed;top:0;left:0}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-const db = getFirestore(initializeApp({
+const firebase = initializeApp({
   apiKey:"AIzaSyCsWG4bQeRA8SvR6BQKu-l4DGsfk22iqHg",
   authDomain:"bluesharklethal.firebaseapp.com",
   projectId:"bluesharklethal"
-}));
+});
+
+const db = getFirestore(firebase);
+const auth = getAuth();
+const provider = new GoogleAuthProvider();
 
 const app = document.getElementById("app");
 
-// 🔒 helpers
+// helpers
 function safeURL(input){
   try{
     const url=new URL(input,location.origin);
@@ -94,10 +116,11 @@ function typeText(el,text){
 }
 
 // routing
-const user=location.hash.replace("#/","");
+const route = location.hash.replace("#/","");
 
-if(user){
-  const snap=await getDoc(doc(db,"users",user));
+// VIEW PROFILE
+if(route){
+  const snap=await getDoc(doc(db,"users",route));
 
   if(!snap.exists()){
     app.textContent="not found";
@@ -106,15 +129,8 @@ if(user){
 
     const c=document.createElement("div");
 
-    if(d.pfp){
-      const img=document.createElement("img");
-      img.src=d.pfp;
-      img.width=100;
-      c.appendChild(img);
-    }
-
     const name=document.createElement("h1");
-    name.textContent=user;
+    name.textContent=d.username || "user";
     c.appendChild(name);
 
     const bio=document.createElement("p");
@@ -131,8 +147,8 @@ if(user){
       a.href=safe;
       a.target="_blank";
       a.rel="noopener noreferrer";
+      a.textContent=l.title;
 
-      a.appendChild(document.createTextNode(l.title));
       links.appendChild(a);
     });
 
@@ -144,52 +160,75 @@ if(user){
 
 }else{
 
-app.innerHTML=`
-<h1>create</h1>
-<input id="username" placeholder="username">
-<input id="bio" placeholder="bio">
-<div id="links"></div>
-<button id="add">+ link</button>
-<button id="save">save</button>
-<p id="out"></p>
-`;
+// AUTH + EDITOR
+onAuthStateChanged(auth, async user => {
 
-add.onclick=()=>{
-  if(links.children.length>=10)return alert("max 10 links");
+  if(!user){
+    app.innerHTML = `<button id="login">login with google</button>`;
+    document.getElementById("login").onclick = () => signInWithPopup(auth, provider);
+    return;
+  }
 
-  const d=document.createElement("div");
-  const t=document.createElement("input");
-  const u=document.createElement("input");
+  const uid = user.uid;
 
-  t.placeholder="title";
-  u.placeholder="url";
+  app.innerHTML = `
+    <h1>edit profile</h1>
+    <input id="username" placeholder="username">
+    <input id="bio" placeholder="bio">
+    <div id="links"></div>
+    <button id="add">+ link</button>
+    <button id="save">save</button>
+    <button id="logout">logout</button>
+    <p id="out"></p>
+  `;
 
-  d.append(t,u);
-  links.appendChild(d);
-};
+  const snap = await getDoc(doc(db,"users",uid));
+  if(snap.exists()){
+    const d=snap.data();
+    username.value=d.username||"";
+    bio.value=d.bio||"";
+  }
 
-save.onclick=async()=>{
-  const u=username.value.trim();
-  if(!u)return alert("username");
+  add.onclick=()=>{
+    if(links.children.length>=10)return alert("max 10 links");
 
-  const linkData=[...links.children].map(r=>{
-    const t=r.children[0].value;
-    const url=safeURL(r.children[1].value);
-    if(!t||!url)return null;
-    return {title:t,url};
-  }).filter(x=>x);
+    const d=document.createElement("div");
+    const t=document.createElement("input");
+    const u=document.createElement("input");
 
-  await setDoc(doc(db,"users",u),{
-    bio:bio.value.slice(0,200),
-    links:linkData
-  });
+    t.placeholder="title";
+    u.placeholder="url";
 
-  out.textContent=location.origin+location.pathname+"#/"+u;
-};
+    d.append(t,u);
+    links.appendChild(d);
+  };
+
+  save.onclick=async()=>{
+    if(bio.value.length>200)return alert("bio too long");
+
+    const linkData=[...links.children].map(r=>{
+      const t=r.children[0].value;
+      const url=safeURL(r.children[1].value);
+      if(!t||!url)return null;
+      return {title:t,url};
+    }).filter(x=>x);
+
+    await setDoc(doc(db,"users",uid),{
+      username:username.value,
+      bio:bio.value,
+      links:linkData
+    });
+
+    out.textContent = location.origin + location.pathname + "#/" + uid;
+  };
+
+  logout.onclick = ()=>signOut(auth);
+
+});
 
 }
 
-// ⭐ simple star bg
+// ⭐ star background
 function stars(){
   const c=bg,ctx=c.getContext("2d");
   c.width=innerWidth;c.height=innerHeight;
