@@ -28,7 +28,7 @@ body{
   border:1px solid rgba(255,255,255,0.1);
 }
 
-input{
+input,select{
   width:100%;
   padding:10px;
   margin:6px 0;
@@ -59,6 +59,13 @@ img{border-radius:50%}
 .links input{
   margin-bottom:6px;
 }
+
+/* THEMES RESTORED */
+.theme-purple{color:#c084fc}
+.theme-blue{color:#38bdf8}
+.theme-red{color:#f87171}
+.theme-green{color:#4ade80}
+.theme-gold{color:#facc15}
 </style>
 </head>
 
@@ -106,7 +113,7 @@ window.loginDiscord = () => {
 const route = location.hash.replace("#/","");
 
 /* =========================
-   VIEW PROFILE
+   PROFILE VIEW
 ========================= */
 if(route){
   const snap = await getDoc(doc(db,"users",route));
@@ -116,10 +123,13 @@ if(route){
   } else {
     const d = snap.data();
 
+    document.body.className = d.theme || "";
+
     app.innerHTML = `
       ${d.pfp ? `<img src="${d.pfp}" width="90">` : ""}
-      <h1>${d.username}</h1>
+      <h1 class="${d.theme || ""}">${d.username}</h1>
       <p>${d.bio || ""}</p>
+
       <div>
         ${(d.links || []).map(l=>`
           <a href="${l.url}" target="_blank">${l.title}</a><br>
@@ -141,9 +151,7 @@ function showLogin(){
     <button onclick="loginDiscord()">Login with Discord</button>
   `;
 
-  if(user){
-    loadEditor();
-  }
+  if(user) loadEditor();
 }
 
 /* =========================
@@ -160,10 +168,20 @@ function loadEditor(){
     <input id="username" placeholder="username">
     <input id="bio" placeholder="bio">
 
+    <select id="theme">
+      <option value="">default</option>
+      <option value="theme-purple">purple</option>
+      <option value="theme-blue">blue</option>
+      <option value="theme-red">red</option>
+      <option value="theme-green">green</option>
+      <option value="theme-gold">gold</option>
+    </select>
+
     <div class="upload" id="upload">upload image</div>
     <img id="preview" width="80" style="display:none">
 
     <div id="links"></div>
+
     <button id="add">+ link</button>
     <button id="save">save</button>
 
@@ -172,6 +190,7 @@ function loadEditor(){
 
   const username = document.getElementById("username");
   const bio = document.getElementById("bio");
+  const theme = document.getElementById("theme");
   const links = document.getElementById("links");
   const preview = document.getElementById("preview");
   const upload = document.getElementById("upload");
@@ -185,10 +204,11 @@ function loadEditor(){
       const d = snap.data();
       username.value = d.username || "";
       bio.value = d.bio || "";
+      theme.value = d.theme || "";
     }
   });
 
-  /* IMAGE UPLOAD */
+  /* IMAGE */
   upload.onclick = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -197,18 +217,18 @@ function loadEditor(){
     input.onchange = e => {
       file = e.target.files[0];
 
-      const reader = new FileReader();
-      reader.onload = ev => {
+      const fr = new FileReader();
+      fr.onload = ev => {
         preview.src = ev.target.result;
         preview.style.display = "block";
       };
-      reader.readAsDataURL(file);
+      fr.readAsDataURL(file);
     };
 
     input.click();
   };
 
-  /* ADD LINK */
+  /* LINKS */
   document.getElementById("add").onclick = () => {
     const row = document.createElement("div");
     row.innerHTML = `
@@ -218,32 +238,39 @@ function loadEditor(){
     links.appendChild(row);
   };
 
-  /* SAVE */
+  /* SAVE (FIXED + DEBUG) */
   document.getElementById("save").onclick = async () => {
+    try {
 
-    let img = "";
+      let img = "";
 
-    if(file){
-      img = await new Promise(r=>{
-        const fr = new FileReader();
-        fr.onload = e => r(e.target.result);
-        fr.readAsDataURL(file);
-      });
+      if(file){
+        img = await new Promise(r=>{
+          const fr = new FileReader();
+          fr.onload = e => r(e.target.result);
+          fr.readAsDataURL(file);
+        });
+      }
+
+      const data = {
+        username: username.value,
+        bio: bio.value,
+        theme: theme.value,
+        pfp: img || null, // IMPORTANT FIX
+        links: [...links.children].map(r=>({
+          title: r.children[0].value,
+          url: r.children[1].value
+        }))
+      };
+
+      await setDoc(doc(db,"users",id), data);
+
+      out.innerText = "saved ✔ " + location.hash = "#/" + id;
+
+    } catch(err){
+      console.error(err);
+      out.innerText = "save failed ❌ check console";
     }
-
-    const data = {
-      username: username.value,
-      bio: bio.value,
-      pfp: img,
-      links: [...links.children].map(r=>({
-        title: r.children[0].value,
-        url: r.children[1].value
-      }))
-    };
-
-    await setDoc(doc(db,"users",id), data);
-
-    out.innerText = location.origin + location.pathname + "#/" + id;
   };
 }
 </script>
