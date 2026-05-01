@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:'Space Grotesk',sans-serif;background:#000;color:#fff;overflow:hidden}
+canvas{position:fixed;top:0;left:0;z-index:-1}
+.center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:90%;max-width:420px}
+h1{font-size:52px;text-shadow:0 0 10px #fff}
+p{color:#aaa;margin:10px 0 20px}
+input{width:100%;padding:10px;margin:6px 0;background:#111;border:1px solid #333;color:#fff;border-radius:8px}
+button{margin-top:10px;padding:10px 20px;border-radius:20px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer}
+button:hover{background:#fff;color:#000}
+.links a{display:block;margin:8px auto;padding:10px;border:1px solid #fff;border-radius:20px;text-decoration:none;color:#fff;width:200px}
+.generated{display:block;margin-top:15px;font-size:12px;color:#0af;word-break:break-all}
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<div class="center" id="app">
+  <h1>create</h1>
+  <p>make your page</p>
+
+  <input id="username" placeholder="username">
+  <input id="bio" placeholder="bio">
+
+  <div id="linksContainer">
+    <input class="link" placeholder="link (https://...)">
+  </div>
+
+  <button onclick="addLink()">+ add link</button>
+  <button onclick="createProfile()">create</button>
+
+  <a id="output" class="generated"></a>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCsWG4bQeRA8SvR6BQKu-l4DGsfk22iqHg",
+  authDomain: "bluesharklethal.firebaseapp.com",
+  projectId: "bluesharklethal",
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.addLink = () => {
+  const input = document.createElement('input');
+  input.placeholder='link (https://...)';
+  input.className='link';
+  document.getElementById('linksContainer').appendChild(input);
+};
+
+window.createProfile = async () => {
+  const username = document.getElementById('username').value;
+  const bio = document.getElementById('bio').value;
+
+  const links = [...document.querySelectorAll('.link')]
+    .map(i => i.value)
+    .filter(v => v);
+
+  await setDoc(doc(db, "users", username), {
+    bio: bio,
+    links: links
+  });
+
+  const url = `${location.origin}${location.pathname}?user=${username}`;
+  document.getElementById('output').innerText = url;
+};
+
+// particles
+function startParticles(){
+  const canvas=document.getElementById('bg');
+  const ctx=canvas.getContext('2d');
+  function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
+  resize();
+  addEventListener('resize',resize);
+
+  let particles=Array.from({length:80},()=>({
+    x:Math.random()*canvas.width,
+    y:Math.random()*canvas.height,
+    vx:(Math.random()-.5)*0.3,
+    vy:(Math.random()-.5)*0.3
+  }));
+
+  function loop(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0||p.x>canvas.width)p.vx*=-1;
+      if(p.y<0||p.y>canvas.height)p.vy*=-1;
+      ctx.fillStyle='white';
+      ctx.fillRect(p.x,p.y,1.5,1.5);
+    });
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+// load profile
+const params = new URLSearchParams(location.search);
+if (params.get("user")) {
+  const username = params.get("user");
+
+  const ref = doc(db, "users", username);
+  const snap = await getDoc(ref);
+
+  if (snap.exists()) {
+    const data = snap.data();
+
+    document.body.innerHTML = `
+    <canvas id="bg"></canvas>
+    <div class="center">
+      <h1>${username}</h1>
+      <p>${data.bio || ''}</p>
+      <div class="links">
+        ${data.links.map(l => `<a href="${l}" target="_blank">${l}</a>`).join('')}
+      </div>
+    </div>`;
+
+    startParticles();
+  } else {
+    document.body.innerHTML = "<h1 style='text-align:center'>User not found</h1>";
+  }
+} else {
+  startParticles();
+}
+</script>
+
+</body>
+</html>
