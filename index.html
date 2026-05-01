@@ -6,60 +6,102 @@
 <title>biolnk</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <style>
+*{box-sizing:border-box}
 body{
   margin:0;
   font-family:'Space Grotesk',sans-serif;
   background:#000;
   color:#fff;
-  overflow:hidden;
+}
+
+canvas{
+  position:fixed;
+  top:0;left:0;
+  z-index:-1;
 }
 
 .center{
   position:absolute;
-  top:50%;
-  left:50%;
+  top:50%;left:50%;
   transform:translate(-50%,-50%);
   text-align:center;
-  width:90%;
-  max-width:420px;
-  padding:25px;
-  border-radius:24px;
-  background:rgba(20,20,40,0.4);
-  backdrop-filter:blur(20px);
+  width:90%;max-width:420px;
+  padding:20px;
+  border-radius:16px;
+  background:rgba(0,0,0,0.6);
   border:1px solid rgba(255,255,255,0.1);
 }
 
 button{
   margin-top:10px;
-  padding:10px 18px;
-  border-radius:10px;
-  border:1px solid rgba(255,255,255,0.2);
-  background:#111;
+  padding:10px 20px;
+  border-radius:16px;
+  border:1px solid #fff;
+  background:transparent;
   color:#fff;
   cursor:pointer;
 }
-
 button:hover{
-  background:#222;
+  background:#fff;
+  color:#000;
+}
+
+input,select{
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  background:#111;
+  border:1px solid #333;
+  color:#fff;
+}
+
+.links a{
+  display:block;
+  margin:8px auto;
+  padding:10px;
+  border-radius:16px;
+  text-decoration:none;
+  color:#fff;
+  width:220px;
+  border:1px solid rgba(255,255,255,0.2);
+}
+
+img{border-radius:50%}
+.upload{
+  border:2px dashed #555;
+  padding:16px;
+  border-radius:10px;
+  margin:10px 0;
+  cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="center" id="app">
-  <h2>biolnk</h2>
-  <button onclick="loginDiscord()">Login with Discord</button>
-</div>
+<canvas id="bg"></canvas>
+<div class="center" id="app"></div>
 
-<script>
-let currentUser = null;
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ======================
-// DISCORD LOGIN
-// ======================
+const db = getFirestore(initializeApp({
+  apiKey:"AIzaSyCsWG4bQeRA8SvR6BQKu-l4DGsfk22iqHg",
+  authDomain:"bluesharklethal.firebaseapp.com",
+  projectId:"bluesharklethal"
+}));
+
+const app = document.getElementById("app");
+
+let discordUser = null;
+
+/* =========================
+   DISCORD LOGIN
+========================= */
 window.loginDiscord = () => {
   const popup = window.open(
     "https://biolnk.snutdddee.workers.dev/login",
@@ -68,26 +110,152 @@ window.loginDiscord = () => {
   );
 
   window.addEventListener("message", (event) => {
-    if (!event.data || !event.data.id) return;
+    if (!event.data?.id) return;
 
-    currentUser = event.data;
+    discordUser = event.data;
 
-    document.getElementById("app").innerHTML = `
-      <h1>Welcome</h1>
-      <p><b>${currentUser.username}</b></p>
-      <p>ID: ${currentUser.id}</p>
-      <button onclick="logout()">Logout</button>
-    `;
+    loadEditor();
   });
 };
 
-// ======================
-// LOGOUT
-// ======================
-window.logout = () => {
-  currentUser = null;
-  location.reload();
-};
+/* =========================
+   ROUTING
+========================= */
+const route = location.hash.replace("#/","");
+
+/* =========================
+   PROFILE VIEW
+========================= */
+if(route){
+  const snap = await getDoc(doc(db,"users",route));
+
+  if(!snap.exists()){
+    app.innerHTML = "<h1>user not found</h1>";
+  } else {
+    const d = snap.data();
+
+    app.innerHTML = `
+      ${d.pfp ? `<img src="${d.pfp}" width="100">` : ""}
+      <h1>${d.username}</h1>
+      <p>${d.bio || ""}</p>
+      <div class="links">
+        ${(d.links || []).map(l => `
+          <a href="${l.url}" target="_blank">${l.title}</a>
+        `).join("")}
+      </div>
+    `;
+  }
+
+} else {
+  showLogin();
+}
+
+/* =========================
+   LOGIN SCREEN
+========================= */
+function showLogin(){
+  app.innerHTML = `
+    <h2>biolnk</h2>
+    <button onclick="loginDiscord()">Login with Discord</button>
+  `;
+}
+
+/* =========================
+   EDITOR
+========================= */
+function loadEditor(){
+
+  const id = discordUser.id;
+
+  app.innerHTML = `
+    <h1>edit profile</h1>
+
+    <p>Logged in as <b>${discordUser.username}</b></p>
+
+    <input id="username" placeholder="username">
+    <input id="bio" placeholder="bio">
+
+    <div id="links"></div>
+
+    <div class="upload" id="uploadBox">upload image</div>
+
+    <img id="preview" width="80" style="display:none">
+
+    <button onclick="addLink()">+ link</button>
+    <button onclick="save()">save</button>
+
+    <p id="out"></p>
+  `;
+
+  /* load existing */
+  getDoc(doc(db,"users",id)).then(snap=>{
+    if(snap.exists()){
+      const d = snap.data();
+      username.value = d.username || "";
+      bio.value = d.bio || "";
+    }
+  });
+
+  window.addLink = () => {
+    const div = document.createElement("div");
+    div.innerHTML = `
+      <input placeholder="title">
+      <input placeholder="url">
+    `;
+    links.appendChild(div);
+  };
+
+  window.save = async () => {
+
+    await setDoc(doc(db,"users",id),{
+      username: username.value,
+      bio: bio.value,
+      links: [...links.children].map(r=>{
+        return {
+          title: r.children[0].value,
+          url: r.children[1].value
+        };
+      })
+    });
+
+    out.innerText = location.origin + location.pathname + "#/" + id;
+  };
+}
+
+/* =========================
+   STARS
+========================= */
+function stars(){
+  const c = bg;
+  const ctx = c.getContext("2d");
+
+  c.width = innerWidth;
+  c.height = innerHeight;
+
+  let s = Array.from({length:120},()=>({
+    x:Math.random()*c.width,
+    y:Math.random()*c.height,
+    v:Math.random()*0.5
+  }));
+
+  function loop(){
+    ctx.fillStyle="#000";
+    ctx.fillRect(0,0,c.width,c.height);
+
+    s.forEach(p=>{
+      p.y += p.v;
+      if(p.y > c.height) p.y = 0;
+
+      ctx.fillStyle="#fff";
+      ctx.fillRect(p.x,p.y,1.5,1.5);
+    });
+
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
+stars();
+
 </script>
 
 </body>
