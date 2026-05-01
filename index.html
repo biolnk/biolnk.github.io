@@ -60,7 +60,7 @@ img{border-radius:50%}
   margin-bottom:6px;
 }
 
-/* THEMES RESTORED */
+/* themes */
 .theme-purple{color:#c084fc}
 .theme-blue{color:#38bdf8}
 .theme-red{color:#f87171}
@@ -71,7 +71,7 @@ img{border-radius:50%}
 
 <body>
 
-<div class="center" id="app"></div>
+<div class="center" id="app">loading...</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -87,9 +87,9 @@ const app = document.getElementById("app");
 
 let user = JSON.parse(localStorage.getItem("discordUser") || "null");
 
-/* =========================
+/* =======================
    DISCORD LOGIN
-========================= */
+======================= */
 window.loginDiscord = () => {
   const popup = window.open(
     "https://biolnk.snutdddee.workers.dev/login",
@@ -107,56 +107,50 @@ window.loginDiscord = () => {
   });
 };
 
-/* =========================
-   ROUTING
-========================= */
+/* =======================
+   ROUTE
+======================= */
 const route = location.hash.replace("#/","");
 
-/* =========================
+/* =======================
    PROFILE VIEW
-========================= */
-if(route){
-  const snap = await getDoc(doc(db,"users",route));
+======================= */
+async function loadProfile(id){
+  const snap = await getDoc(doc(db,"users",id));
 
   if(!snap.exists()){
     app.innerHTML = "<h1>not found</h1>";
-  } else {
-    const d = snap.data();
-
-    document.body.className = d.theme || "";
-
-    app.innerHTML = `
-      ${d.pfp ? `<img src="${d.pfp}" width="90">` : ""}
-      <h1 class="${d.theme || ""}">${d.username}</h1>
-      <p>${d.bio || ""}</p>
-
-      <div>
-        ${(d.links || []).map(l=>`
-          <a href="${l.url}" target="_blank">${l.title}</a><br>
-        `).join("")}
-      </div>
-    `;
+    return;
   }
 
-} else {
-  showLogin();
+  const d = snap.data();
+
+  app.innerHTML = `
+    ${d.pfp ? `<img src="${d.pfp}" width="90">` : ""}
+    <h1 class="${d.theme || ""}">${d.username || id}</h1>
+    <p>${d.bio || ""}</p>
+
+    <div>
+      ${(d.links || []).map(l=>`
+        <a href="${l.url}" target="_blank">${l.title}</a><br>
+      `).join("")}
+    </div>
+  `;
 }
 
-/* =========================
+/* =======================
    LOGIN SCREEN
-========================= */
+======================= */
 function showLogin(){
   app.innerHTML = `
     <h2>biolnk</h2>
     <button onclick="loginDiscord()">Login with Discord</button>
   `;
-
-  if(user) loadEditor();
 }
 
-/* =========================
+/* =======================
    EDITOR
-========================= */
+======================= */
 function loadEditor(){
 
   const id = user.id;
@@ -198,7 +192,7 @@ function loadEditor(){
 
   let file = null;
 
-  /* LOAD DATA */
+  /* LOAD */
   getDoc(doc(db,"users",id)).then(snap=>{
     if(snap.exists()){
       const d = snap.data();
@@ -210,11 +204,11 @@ function loadEditor(){
 
   /* IMAGE */
   upload.onclick = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
+    const i = document.createElement("input");
+    i.type = "file";
+    i.accept = "image/*";
 
-    input.onchange = e => {
+    i.onchange = e => {
       file = e.target.files[0];
 
       const fr = new FileReader();
@@ -225,20 +219,20 @@ function loadEditor(){
       fr.readAsDataURL(file);
     };
 
-    input.click();
+    i.click();
   };
 
   /* LINKS */
   document.getElementById("add").onclick = () => {
-    const row = document.createElement("div");
-    row.innerHTML = `
+    const r = document.createElement("div");
+    r.innerHTML = `
       <input placeholder="title">
       <input placeholder="url">
     `;
-    links.appendChild(row);
+    links.appendChild(r);
   };
 
-  /* SAVE (FIXED + DEBUG) */
+  /* SAVE FIXED */
   document.getElementById("save").onclick = async () => {
     try {
 
@@ -252,27 +246,50 @@ function loadEditor(){
         });
       }
 
-      const data = {
+      await setDoc(doc(db,"users",id),{
         username: username.value,
         bio: bio.value,
         theme: theme.value,
-        pfp: img || null, // IMPORTANT FIX
+        pfp: img || "",
         links: [...links.children].map(r=>({
-          title: r.children[0].value,
-          url: r.children[1].value
+          title:r.children[0].value,
+          url:r.children[1].value
         }))
-      };
+      });
 
-      await setDoc(doc(db,"users",id), data);
-
-      out.innerText = "saved ✔ " + location.hash = "#/" + id;
+      out.innerText = "saved ✔";
+      location.hash = "#/" + id;
 
     } catch(err){
       console.error(err);
-      out.innerText = "save failed ❌ check console";
+      out.innerText = "save failed ❌";
     }
   };
 }
+
+/* =======================
+   START APP SAFELY
+======================= */
+(async function start(){
+
+  try {
+
+    if(route){
+      await loadProfile(route);
+    } else {
+      if(user){
+        loadEditor();
+      } else {
+        showLogin();
+      }
+    }
+
+  } catch(e){
+    console.error(e);
+    app.innerHTML = "<h1>app error</h1>";
+  }
+
+})();
 </script>
 
 </body>
