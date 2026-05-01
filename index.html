@@ -10,135 +10,90 @@
 
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:'Space Grotesk',sans-serif;
-  background:#000;
-  color:#fff;
-  overflow:hidden;
-}
+body{margin:0;font-family:'Space Grotesk',sans-serif;background:#000;color:#fff;overflow:hidden}
 
-/* cursor glow */
+/* splash */
+#splash{
+  position:fixed;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  background:#000;z-index:999;
+  font-size:32px;
+  animation:fadeOut 1s ease 1.5s forwards;
+}
+@keyframes fadeOut{to{opacity:0;visibility:hidden}}
+
+/* cursor */
 .cursor{
-  position:fixed;
-  width:180px;height:180px;
+  position:fixed;width:180px;height:180px;
   background:radial-gradient(circle,rgba(255,255,255,0.15),transparent);
-  pointer-events:none;
-  transform:translate(-50%,-50%);
-  z-index:1;
+  pointer-events:none;transform:translate(-50%,-50%);
 }
 
 /* canvas */
-canvas{position:fixed;top:0;left:0;z-index:0}
+canvas{position:fixed;top:0;left:0}
 
-/* center card */
+/* card */
 .center{
-  position:absolute;
-  top:50%;left:50%;
+  position:absolute;top:50%;left:50%;
   transform:translate(-50%,-50%);
-  text-align:center;
-  width:90%;max-width:420px;
-  padding:20px;
-  border-radius:20px;
+  text-align:center;width:90%;max-width:420px;
+  padding:20px;border-radius:20px;
   backdrop-filter:blur(12px);
   border:1px solid rgba(255,255,255,0.1);
-  z-index:2;
-  animation:fadeIn .8s ease;
-}
-
-/* animations */
-@keyframes fadeIn{
-  from{opacity:0;transform:translate(-50%,-60%)}
-  to{opacity:1;transform:translate(-50%,-50%)}
-}
-@keyframes float{
-  0%{transform:translateY(0)}
-  50%{transform:translateY(-6px)}
-  100%{transform:translateY(0)}
+  transition:transform .1s;
 }
 
 h1{
-  font-size:46px;
-  animation:float 4s ease-in-out infinite;
-  background:linear-gradient(90deg,#fff,#aaa,#fff);
-  -webkit-background-clip:text;
-  color:transparent;
+  font-size:44px;
+  text-shadow:0 0 15px currentColor;
 }
 
-input,select{
-  width:100%;
-  padding:10px;
-  margin:6px 0;
-  background:#111;
-  border:1px solid #333;
-  color:#fff;
-  border-radius:8px;
-}
-
-/* buttons */
-button{
-  margin-top:10px;
-  padding:10px 20px;
-  border-radius:20px;
-  border:1px solid #fff;
-  background:transparent;
-  color:#fff;
-  cursor:pointer;
-  transition:.2s;
-}
-button:hover{
-  background:#fff;
-  color:#000;
-  transform:scale(1.08);
-  box-shadow:0 0 20px #fff;
-}
-
-/* links */
 .links a{
-  display:block;
-  margin:10px auto;
-  padding:12px;
-  border-radius:20px;
-  text-decoration:none;
-  color:#fff;
-  width:240px;
+  display:block;margin:10px auto;padding:12px;
+  border-radius:20px;text-decoration:none;
+  color:#fff;width:240px;
   border:1px solid rgba(255,255,255,0.2);
   transition:.2s;
 }
 .links a:hover{
   transform:scale(1.08);
-  background:#fff;
-  color:#000;
-  box-shadow:0 0 20px #fff;
+  background:#fff;color:#000;
 }
 
-.links i{margin-right:8px}
-
-img{
-  border-radius:50%;
-  margin-bottom:10px;
-  animation:float 5s ease-in-out infinite;
+input,select{
+  width:100%;padding:10px;margin:6px 0;
+  background:#111;border:1px solid #333;
+  color:#fff;border-radius:8px;
 }
 
-/* upload */
+button{
+  margin-top:10px;padding:10px 20px;
+  border-radius:20px;border:1px solid #fff;
+  background:transparent;color:#fff;
+  cursor:pointer;transition:.2s;
+}
+button:hover{
+  background:#fff;color:#000;
+  transform:scale(1.08);
+}
+
 .upload{
-  border:2px dashed #555;
-  padding:20px;
-  border-radius:12px;
-  margin:10px 0;
-  cursor:pointer;
-}
-.upload:hover{
-  border-color:#fff;
-  box-shadow:0 0 15px #fff;
+  border:2px dashed #555;padding:20px;
+  border-radius:12px;margin:10px 0;
 }
 
+/* THEMES */
 .theme-purple{color:#c084fc}
 .theme-blue{color:#38bdf8}
+.theme-red{color:#f87171}
+.theme-green{color:#4ade80}
+.theme-gold{color:#facc15}
+.theme-cyber{color:#0ff;text-shadow:0 0 10px #0ff}
 </style>
 </head>
 <body>
 
+<div id="splash">biolnk</div>
 <div class="cursor" id="cursor"></div>
 <canvas id="bg"></canvas>
 <div class="center" id="app"></div>
@@ -147,57 +102,84 @@ img{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCsWG4bQeRA8SvR6BQKu-l4DGsfk22iqHg",
-  authDomain: "bluesharklethal.firebaseapp.com",
-  projectId: "bluesharklethal",
-};
+const db = getFirestore(initializeApp({
+  apiKey:"AIzaSyCsWG4bQeRA8SvR6BQKu-l4DGsfk22iqHg",
+  authDomain:"bluesharklethal.firebaseapp.com",
+  projectId:"bluesharklethal"
+}));
 
-const db = getFirestore(initializeApp(firebaseConfig));
 const app = document.getElementById("app");
 
-// cursor glow
-const cursor = document.getElementById("cursor");
-document.addEventListener("mousemove", e=>{
+// cursor
+document.addEventListener("mousemove",e=>{
   cursor.style.left=e.clientX+"px";
   cursor.style.top=e.clientY+"px";
 });
+
+// parallax
+document.addEventListener("mousemove",e=>{
+  const x=(e.clientX/window.innerWidth-.5)*20;
+  const y=(e.clientY/window.innerHeight-.5)*20;
+  document.querySelector(".center").style.transform =
+    `translate(-50%,-50%) rotateX(${-y}deg) rotateY(${x}deg)`;
+});
+
+// sounds
+const ctx = new (window.AudioContext||window.webkitAudioContext)();
+function beep(freq){
+  const o=ctx.createOscillator();
+  const g=ctx.createGain();
+  o.connect(g);g.connect(ctx.destination);
+  o.frequency.value=freq;
+  o.start();
+  g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.1);
+}
+
+document.addEventListener("mouseover",()=>beep(200));
+document.addEventListener("click",()=>beep(400));
 
 // icons
 function icon(url){
   if(url.includes("github")) return "fa-brands fa-github";
   if(url.includes("discord")) return "fa-brands fa-discord";
-  if(url.includes("youtube")) return "fa-brands fa-youtube";
   return "fa-solid fa-link";
 }
 
-// ⭐ STARS BACKGROUND
+// ⭐ constellations
 function stars(){
-  const c=document.getElementById('bg');
-  const ctx=c.getContext('2d');
-
+  const c=bg,ctx=c.getContext("2d");
   function resize(){c.width=innerWidth;c.height=innerHeight}
-  resize();addEventListener('resize',resize);
+  resize();addEventListener("resize",resize);
 
-  let stars=Array.from({length:120},()=>({
+  let s=Array.from({length:80},()=>({
     x:Math.random()*c.width,
     y:Math.random()*c.height,
-    r:Math.random()*1.5,
-    v:Math.random()*0.3
+    vx:(Math.random()-.5)*0.2,
+    vy:(Math.random()-.5)*0.2
   }));
 
   function loop(){
-    ctx.fillStyle="black";
+    ctx.fillStyle="#000";
     ctx.fillRect(0,0,c.width,c.height);
 
-    stars.forEach(s=>{
-      s.y+=s.v;
-      if(s.y>c.height){s.y=0;s.x=Math.random()*c.width;}
+    s.forEach(a=>{
+      a.x+=a.vx;a.y+=a.vy;
+      if(a.x<0||a.x>c.width)a.vx*=-1;
+      if(a.y<0||a.y>c.height)a.vy*=-1;
 
-      ctx.beginPath();
-      ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-      ctx.fillStyle="white";
-      ctx.fill();
+      ctx.fillRect(a.x,a.y,2,2);
+
+      s.forEach(b=>{
+        const dx=a.x-b.x,dy=a.y-b.y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<100){
+          ctx.strokeStyle="rgba(255,255,255,"+(1-d/100)+")";
+          ctx.beginPath();
+          ctx.moveTo(a.x,a.y);
+          ctx.lineTo(b.x,b.y);
+          ctx.stroke();
+        }
+      });
     });
 
     requestAnimationFrame(loop);
@@ -205,48 +187,55 @@ function stars(){
   loop();
 }
 
+// typing effect
+function typeText(el,text){
+  el.innerHTML="";
+  let i=0;
+  function t(){
+    if(i<text.length){
+      el.innerHTML+=text[i++];
+      setTimeout(t,20);
+    }
+  }
+  t();
+}
+
 // image compress
 function resizeToBase64(file){
-  return new Promise(resolve=>{
+  return new Promise(r=>{
     const img=new Image();
-    const reader=new FileReader();
-    reader.onload=e=>img.src=e.target.result;
-
+    const fr=new FileReader();
+    fr.onload=e=>img.src=e.target.result;
     img.onload=()=>{
-      const canvas=document.createElement("canvas");
+      const c=document.createElement("canvas");
       const max=200;
       let w=img.width,h=img.height;
-
       if(w>h&&w>max){h*=max/w;w=max}
       if(h>w&&h>max){w*=max/h;h=max}
-
-      canvas.width=w;canvas.height=h;
-      canvas.getContext("2d").drawImage(img,0,0,w,h);
-
-      resolve(canvas.toDataURL("image/jpeg",0.6));
+      c.width=w;c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      r(c.toDataURL("image/jpeg",0.6));
     };
-
-    reader.readAsDataURL(file);
+    fr.readAsDataURL(file);
   });
 }
 
 // routing
-const username = location.hash.replace("#/","");
+const user = location.hash.replace("#/","");
 
 // VIEW
-if(username){
-  const snap = await getDoc(doc(db,"users",username));
-
+if(user){
+  const snap=await getDoc(doc(db,"users",user));
   if(!snap.exists()){
-    app.innerHTML="<h1>user not found</h1>";
-  } else {
+    app.innerHTML="<h1>not found</h1>";
+  }else{
     const d=snap.data();
     document.body.className=d.theme||"";
 
     app.innerHTML=`
       ${d.pfp?`<img src="${d.pfp}" width="100">`:""}
-      <h1>${username}</h1>
-      <p>${d.bio||""}</p>
+      <h1>${user}</h1>
+      <p id="bio"></p>
       <div class="links">
         ${d.links.map(l=>`
           <a href="${l.url}" target="_blank">
@@ -254,27 +243,29 @@ if(username){
           </a>`).join("")}
       </div>
     `;
+
+    typeText(document.getElementById("bio"), d.bio||"");
   }
 
-} else {
+}else{
 
 // EDITOR
 app.innerHTML=`
 <h1>create</h1>
-
 <input id="usernameInput" placeholder="username">
 <input id="bio" placeholder="bio">
 
-<div class="upload" id="uploadBox">
-  drag & drop image or click
-</div>
-
+<div class="upload" id="uploadBox">upload image</div>
 <img id="preview" width="80" style="display:none">
 
 <select id="theme">
-  <option value="">default</option>
-  <option value="theme-purple">purple</option>
-  <option value="theme-blue">blue</option>
+<option value="">default</option>
+<option value="theme-purple">purple</option>
+<option value="theme-blue">blue</option>
+<option value="theme-red">red</option>
+<option value="theme-green">green</option>
+<option value="theme-gold">gold</option>
+<option value="theme-cyber">cyber</option>
 </select>
 
 <div id="links"></div>
@@ -285,29 +276,23 @@ app.innerHTML=`
 <p id="out"></p>
 `;
 
-let uploadedFile=null;
+let file=null;
 
 uploadBox.onclick=()=>{
   const i=document.createElement("input");
   i.type="file";i.accept="image/*";
-  i.onchange=e=>handleFile(e.target.files[0]);
+  i.onchange=e=>handle(e.target.files[0]);
   i.click();
 };
 
-uploadBox.ondragover=e=>e.preventDefault();
-uploadBox.ondrop=e=>{
-  e.preventDefault();
-  handleFile(e.dataTransfer.files[0]);
-};
-
-function handleFile(file){
-  uploadedFile=file;
+function handle(f){
+  file=f;
   const r=new FileReader();
   r.onload=e=>{
     preview.src=e.target.result;
     preview.style.display="block";
   };
-  r.readAsDataURL(file);
+  r.readAsDataURL(f);
 }
 
 window.addLink=()=>{
@@ -316,16 +301,14 @@ window.addLink=()=>{
   links.appendChild(d);
 };
 
-window.saveProfile=async ()=>{
-  const username=usernameInput.value.trim();
-  if(!username)return alert("enter username");
+window.saveProfile=async()=>{
+  const u=usernameInput.value.trim();
+  if(!u)return alert("username");
 
   let img="";
-  if(uploadedFile){
-    img=await resizeToBase64(uploadedFile);
-  }
+  if(file) img=await resizeToBase64(file);
 
-  const data={
+  await setDoc(doc(db,"users",u),{
     bio:bio.value,
     pfp:img,
     theme:theme.value,
@@ -335,16 +318,13 @@ window.saveProfile=async ()=>{
       if(!t||!u)return null;
       return {title:t,url:u};
     }).filter(x=>x)
-  };
+  });
 
-  await setDoc(doc(db,"users",username),data);
-
-  out.innerText=location.origin+location.pathname+"#/"+username;
+  out.innerText=location.origin+location.pathname+"#/"+u;
 };
 
 }
 
-// start stars
 stars();
 </script>
 
