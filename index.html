@@ -18,10 +18,12 @@ body{
 
 .center{
   position:absolute;
-  top:50%;left:50%;
+  top:50%;
+  left:50%;
   transform:translate(-50%,-50%);
   text-align:center;
-  width:90%;max-width:420px;
+  width:90%;
+  max-width:420px;
   padding:25px;
   border-radius:24px;
   background:rgba(20,20,40,0.4);
@@ -29,79 +31,35 @@ body{
   border:1px solid rgba(255,255,255,0.1);
 }
 
-.links a{
-  display:block;
-  margin:10px auto;
-  padding:12px;
-  border-radius:20px;
-  color:#fff;
-  text-decoration:none;
-  border:1px solid rgba(255,255,255,0.2);
-}
-
-input{
-  width:100%;
-  padding:10px;
-  margin:6px 0;
-  background:#111;
-  color:#fff;
-  border:1px solid #333;
-}
-
 button{
   margin-top:10px;
-  padding:10px 20px;
+  padding:10px 18px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.2);
+  background:#111;
+  color:#fff;
   cursor:pointer;
 }
 
-canvas{
-  position:fixed;
-  top:0;
-  left:0;
+button:hover{
+  background:#222;
 }
 </style>
 </head>
 
 <body>
 
-<canvas id="bg"></canvas>
-<div class="center" id="app"></div>
+<div class="center" id="app">
+  <h2>biolnk</h2>
+  <button onclick="loginDiscord()">Login with Discord</button>
+</div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {
-  getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
-  signInWithCustomToken,
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+<script>
+let currentUser = null;
 
-// 🔥 Firebase init
-const firebase = initializeApp({
-  apiKey:"AIzaSyCsWG4bQeRA8SvR6BQKu-l4DGsfk22iqHg",
-  authDomain:"bluesharklethal.firebaseapp.com",
-  projectId:"bluesharklethal"
-});
-
-const db = getFirestore(firebase);
-const auth = getAuth(firebase);
-const googleProvider = new GoogleAuthProvider();
-
-const app = document.getElementById("app");
-
-// =========================
-// LOGIN FUNCTIONS
-// =========================
-
-// Google login
-window.loginGoogle = () => {
-  signInWithPopup(auth, googleProvider);
-};
-
-// Discord login (Cloudflare Worker)
+// ======================
+// DISCORD LOGIN
+// ======================
 window.loginDiscord = () => {
   const popup = window.open(
     "https://biolnk.snutdddee.workers.dev/login",
@@ -109,196 +67,27 @@ window.loginDiscord = () => {
     "width=500,height=700"
   );
 
-  window.addEventListener("message", async (event) => {
-    if (!event.data?.token) return;
-    await signInWithCustomToken(auth, event.data.token);
+  window.addEventListener("message", (event) => {
+    if (!event.data || !event.data.id) return;
+
+    currentUser = event.data;
+
+    document.getElementById("app").innerHTML = `
+      <h1>Welcome</h1>
+      <p><b>${currentUser.username}</b></p>
+      <p>ID: ${currentUser.id}</p>
+      <button onclick="logout()">Logout</button>
+    `;
   });
 };
 
-// =========================
-// HELPERS
-// =========================
-
-function safeURL(input){
-  try{
-    const url = new URL(input, location.origin);
-    if(!["http:","https:"].includes(url.protocol)) return null;
-    return url.href;
-  }catch{return null;}
-}
-
-function typeText(el,text){
-  el.textContent="";
-  let i=0;
-  (function t(){
-    if(i<text.length){
-      el.textContent+=text[i++];
-      setTimeout(t,20);
-    }
-  })();
-}
-
-// =========================
-// ROUTING
-// =========================
-
-const route = location.hash.replace("#/","");
-
-// =========================
-// PROFILE VIEW
-// =========================
-
-if(route){
-  const snap = await getDoc(doc(db,"users",route));
-
-  if(!snap.exists()){
-    app.textContent="not found";
-  } else {
-    const d = snap.data();
-
-    const c = document.createElement("div");
-
-    const name = document.createElement("h1");
-    name.textContent = d.username || "user";
-    c.appendChild(name);
-
-    const bio = document.createElement("p");
-    c.appendChild(bio);
-
-    const links = document.createElement("div");
-    links.className = "links";
-
-    (d.links || []).forEach(l=>{
-      const safe = safeURL(l.url);
-      if(!safe) return;
-
-      const a = document.createElement("a");
-      a.href = safe;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.textContent = l.title;
-
-      links.appendChild(a);
-    });
-
-    c.appendChild(links);
-    app.appendChild(c);
-
-    typeText(bio, d.bio || "");
-  }
-
-} else {
-
-// =========================
-// AUTH + EDITOR
-// =========================
-
-onAuthStateChanged(auth, async user => {
-
-  if(!user){
-    app.innerHTML = `
-      <h2>login</h2>
-      <button onclick="loginGoogle()">Login with Google</button>
-      <button onclick="loginDiscord()">Login with Discord</button>
-    `;
-    return;
-  }
-
-  const uid = user.uid;
-
-  app.innerHTML = `
-    <h1>edit profile</h1>
-    <input id="username" placeholder="username">
-    <input id="bio" placeholder="bio">
-
-    <div id="links"></div>
-
-    <button id="add">+ link</button>
-    <button id="save">save</button>
-    <button id="logout">logout</button>
-
-    <p id="out"></p>
-  `;
-
-  const snap = await getDoc(doc(db,"users",uid));
-  if(snap.exists()){
-    const d = snap.data();
-    username.value = d.username || "";
-    bio.value = d.bio || "";
-  }
-
-  add.onclick = () => {
-    if(links.children.length >= 10) return alert("max 10 links");
-
-    const row = document.createElement("div");
-    const t = document.createElement("input");
-    const u = document.createElement("input");
-
-    t.placeholder = "title";
-    u.placeholder = "url";
-
-    row.append(t,u);
-    links.appendChild(row);
-  };
-
-  save.onclick = async () => {
-    const linkData = [...links.children].map(r=>{
-      const t = r.children[0].value;
-      const url = safeURL(r.children[1].value);
-      if(!t || !url) return null;
-      return {title:t,url};
-    }).filter(Boolean);
-
-    await setDoc(doc(db,"users",uid),{
-      username: username.value,
-      bio: bio.value,
-      links: linkData
-    });
-
-    out.textContent = location.origin + location.pathname + "#/" + uid;
-  };
-
-  logout.onclick = () => signOut(auth);
-});
-
-}
-
-// =========================
-// STAR BACKGROUND
-// =========================
-
-function stars(){
-  const c = bg;
-  const ctx = c.getContext("2d");
-
-  c.width = innerWidth;
-  c.height = innerHeight;
-
-  let s = Array.from({length:140},()=>({
-    x:Math.random()*c.width,
-    y:Math.random()*c.height,
-    size:Math.random()*2
-  }));
-
-  function loop(){
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0,0,c.width,c.height);
-
-    s.forEach(p=>{
-      ctx.globalAlpha = Math.random();
-      ctx.fillStyle = "white";
-      ctx.fillRect(p.x,p.y,p.size,p.size);
-    });
-
-    ctx.globalAlpha = 1;
-    requestAnimationFrame(loop);
-  }
-
-  loop();
-}
-
-stars();
-
+// ======================
+// LOGOUT
+// ======================
+window.logout = () => {
+  currentUser = null;
+  location.reload();
+};
 </script>
 
 </body>
