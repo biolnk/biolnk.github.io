@@ -15,9 +15,23 @@ body{
   font-family:'Space Grotesk',sans-serif;
   background:#000;
   color:#fff;
+  overflow:hidden;
 }
-canvas{position:fixed;top:0;left:0;z-index:-1}
 
+/* cursor glow */
+.cursor{
+  position:fixed;
+  width:180px;height:180px;
+  background:radial-gradient(circle,rgba(255,255,255,0.15),transparent);
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+  z-index:1;
+}
+
+/* canvas */
+canvas{position:fixed;top:0;left:0;z-index:0}
+
+/* center card */
 .center{
   position:absolute;
   top:50%;left:50%;
@@ -26,11 +40,30 @@ canvas{position:fixed;top:0;left:0;z-index:-1}
   width:90%;max-width:420px;
   padding:20px;
   border-radius:20px;
-  backdrop-filter:blur(10px);
+  backdrop-filter:blur(12px);
   border:1px solid rgba(255,255,255,0.1);
+  z-index:2;
+  animation:fadeIn .8s ease;
 }
 
-h1{font-size:42px;text-shadow:0 0 10px currentColor}
+/* animations */
+@keyframes fadeIn{
+  from{opacity:0;transform:translate(-50%,-60%)}
+  to{opacity:1;transform:translate(-50%,-50%)}
+}
+@keyframes float{
+  0%{transform:translateY(0)}
+  50%{transform:translateY(-6px)}
+  100%{transform:translateY(0)}
+}
+
+h1{
+  font-size:46px;
+  animation:float 4s ease-in-out infinite;
+  background:linear-gradient(90deg,#fff,#aaa,#fff);
+  -webkit-background-clip:text;
+  color:transparent;
+}
 
 input,select{
   width:100%;
@@ -42,6 +75,7 @@ input,select{
   border-radius:8px;
 }
 
+/* buttons */
 button{
   margin-top:10px;
   padding:10px 20px;
@@ -50,24 +84,43 @@ button{
   background:transparent;
   color:#fff;
   cursor:pointer;
+  transition:.2s;
 }
-button:hover{background:#fff;color:#000}
+button:hover{
+  background:#fff;
+  color:#000;
+  transform:scale(1.08);
+  box-shadow:0 0 20px #fff;
+}
 
+/* links */
 .links a{
   display:block;
-  margin:8px auto;
-  padding:10px;
+  margin:10px auto;
+  padding:12px;
   border-radius:20px;
   text-decoration:none;
   color:#fff;
-  width:220px;
+  width:240px;
   border:1px solid rgba(255,255,255,0.2);
+  transition:.2s;
 }
-.links a:hover{background:#fff;color:#000}
+.links a:hover{
+  transform:scale(1.08);
+  background:#fff;
+  color:#000;
+  box-shadow:0 0 20px #fff;
+}
 
 .links i{margin-right:8px}
-img{border-radius:50%;margin-bottom:10px}
 
+img{
+  border-radius:50%;
+  margin-bottom:10px;
+  animation:float 5s ease-in-out infinite;
+}
+
+/* upload */
 .upload{
   border:2px dashed #555;
   padding:20px;
@@ -75,7 +128,10 @@ img{border-radius:50%;margin-bottom:10px}
   margin:10px 0;
   cursor:pointer;
 }
-.upload:hover{border-color:#fff}
+.upload:hover{
+  border-color:#fff;
+  box-shadow:0 0 15px #fff;
+}
 
 .theme-purple{color:#c084fc}
 .theme-blue{color:#38bdf8}
@@ -83,6 +139,7 @@ img{border-radius:50%;margin-bottom:10px}
 </head>
 <body>
 
+<div class="cursor" id="cursor"></div>
 <canvas id="bg"></canvas>
 <div class="center" id="app"></div>
 
@@ -99,7 +156,14 @@ const firebaseConfig = {
 const db = getFirestore(initializeApp(firebaseConfig));
 const app = document.getElementById("app");
 
-// ---------- ICONS ----------
+// cursor glow
+const cursor = document.getElementById("cursor");
+document.addEventListener("mousemove", e=>{
+  cursor.style.left=e.clientX+"px";
+  cursor.style.top=e.clientY+"px";
+});
+
+// icons
 function icon(url){
   if(url.includes("github")) return "fa-brands fa-github";
   if(url.includes("discord")) return "fa-brands fa-discord";
@@ -107,76 +171,77 @@ function icon(url){
   return "fa-solid fa-link";
 }
 
-// ---------- PARTICLES ----------
-function particles(){
+// ⭐ STARS BACKGROUND
+function stars(){
   const c=document.getElementById('bg');
   const ctx=c.getContext('2d');
-  function resize(){c.width=innerWidth;c.height=innerHeight}
-  resize();window.addEventListener('resize',resize);
 
-  let p=Array.from({length:60},()=>({
+  function resize(){c.width=innerWidth;c.height=innerHeight}
+  resize();addEventListener('resize',resize);
+
+  let stars=Array.from({length:120},()=>({
     x:Math.random()*c.width,
     y:Math.random()*c.height,
-    vx:(Math.random()-.5)*0.3,
-    vy:(Math.random()-.5)*0.3
+    r:Math.random()*1.5,
+    v:Math.random()*0.3
   }));
 
   function loop(){
-    ctx.clearRect(0,0,c.width,c.height);
-    p.forEach(pt=>{
-      pt.x+=pt.vx; pt.y+=pt.vy;
-      if(pt.x<0||pt.x>c.width)pt.vx*=-1;
-      if(pt.y<0||pt.y>c.height)pt.vy*=-1;
-      ctx.fillRect(pt.x,pt.y,1.5,1.5);
+    ctx.fillStyle="black";
+    ctx.fillRect(0,0,c.width,c.height);
+
+    stars.forEach(s=>{
+      s.y+=s.v;
+      if(s.y>c.height){s.y=0;s.x=Math.random()*c.width;}
+
+      ctx.beginPath();
+      ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fillStyle="white";
+      ctx.fill();
     });
+
     requestAnimationFrame(loop);
   }
   loop();
 }
 
-// ---------- IMAGE RESIZE TO BASE64 ----------
+// image compress
 function resizeToBase64(file){
   return new Promise(resolve=>{
-    const img = new Image();
-    const reader = new FileReader();
+    const img=new Image();
+    const reader=new FileReader();
+    reader.onload=e=>img.src=e.target.result;
 
-    reader.onload = e => img.src = e.target.result;
+    img.onload=()=>{
+      const canvas=document.createElement("canvas");
+      const max=200;
+      let w=img.width,h=img.height;
 
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const max = 200;
+      if(w>h&&w>max){h*=max/w;w=max}
+      if(h>w&&h>max){w*=max/h;h=max}
 
-      let w = img.width;
-      let h = img.height;
+      canvas.width=w;canvas.height=h;
+      canvas.getContext("2d").drawImage(img,0,0,w,h);
 
-      if(w > h && w > max){ h *= max/w; w = max; }
-      if(h > w && h > max){ w *= max/h; h = max; }
-
-      canvas.width = w;
-      canvas.height = h;
-
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img,0,0,w,h);
-
-      resolve(canvas.toDataURL("image/jpeg", 0.6));
+      resolve(canvas.toDataURL("image/jpeg",0.6));
     };
 
     reader.readAsDataURL(file);
   });
 }
 
-// ---------- ROUTING ----------
+// routing
 const username = location.hash.replace("#/","");
 
-// ---------- VIEW PROFILE ----------
+// VIEW
 if(username){
   const snap = await getDoc(doc(db,"users",username));
 
   if(!snap.exists()){
     app.innerHTML="<h1>user not found</h1>";
   } else {
-    const d = snap.data();
-    document.body.className = d.theme || "";
+    const d=snap.data();
+    document.body.className=d.theme||"";
 
     app.innerHTML=`
       ${d.pfp?`<img src="${d.pfp}" width="100">`:""}
@@ -191,11 +256,9 @@ if(username){
     `;
   }
 
-  particles();
-
 } else {
 
-// ---------- EDITOR ----------
+// EDITOR
 app.innerHTML=`
 <h1>create</h1>
 
@@ -222,72 +285,67 @@ app.innerHTML=`
 <p id="out"></p>
 `;
 
-let uploadedFile = null;
+let uploadedFile=null;
 
-// upload handlers
-const box = document.getElementById("uploadBox");
-
-box.onclick = () => {
-  const input = document.createElement("input");
-  input.type="file";
-  input.accept="image/*";
-  input.onchange = e => handleFile(e.target.files[0]);
-  input.click();
+uploadBox.onclick=()=>{
+  const i=document.createElement("input");
+  i.type="file";i.accept="image/*";
+  i.onchange=e=>handleFile(e.target.files[0]);
+  i.click();
 };
 
-box.ondragover = e => e.preventDefault();
-box.ondrop = e => {
+uploadBox.ondragover=e=>e.preventDefault();
+uploadBox.ondrop=e=>{
   e.preventDefault();
   handleFile(e.dataTransfer.files[0]);
 };
 
 function handleFile(file){
-  uploadedFile = file;
-
-  const reader = new FileReader();
-  reader.onload = e=>{
-    preview.src = e.target.result;
+  uploadedFile=file;
+  const r=new FileReader();
+  r.onload=e=>{
+    preview.src=e.target.result;
     preview.style.display="block";
   };
-  reader.readAsDataURL(file);
+  r.readAsDataURL(file);
 }
 
-// add link
-window.addLink = ()=>{
+window.addLink=()=>{
   const d=document.createElement("div");
   d.innerHTML=`<input placeholder="title"><input placeholder="url">`;
   links.appendChild(d);
 };
 
-// save
-window.saveProfile = async ()=>{
+window.saveProfile=async ()=>{
   const username=usernameInput.value.trim();
-  if(!username) return alert("enter username");
+  if(!username)return alert("enter username");
 
-  let imageData = "";
+  let img="";
   if(uploadedFile){
-    imageData = await resizeToBase64(uploadedFile);
+    img=await resizeToBase64(uploadedFile);
   }
 
   const data={
     bio:bio.value,
-    pfp:imageData,
+    pfp:img,
     theme:theme.value,
     links:[...links.children].map(r=>{
       const t=r.children[0].value;
       const u=r.children[1].value;
-      if(!t||!u) return null;
+      if(!t||!u)return null;
       return {title:t,url:u};
     }).filter(x=>x)
   };
 
-  await setDoc(doc(db,"users",username), data);
+  await setDoc(doc(db,"users",username),data);
 
-  out.innerText = location.origin + location.pathname + "#/" + username;
+  out.innerText=location.origin+location.pathname+"#/"+username;
 };
 
-particles();
 }
+
+// start stars
+stars();
 </script>
 
 </body>
