@@ -3,21 +3,80 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BioLnk</title>
+<title>biolnk</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:'Space Grotesk',sans-serif;background:#000;color:#fff;overflow:hidden}
+body{
+  margin:0;
+  font-family:'Space Grotesk',sans-serif;
+  background:#000;
+  color:#fff;
+  overflow:hidden;
+  transition:0.3s;
+}
 canvas{position:fixed;top:0;left:0;z-index:-1}
-.center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:90%;max-width:420px}
-h1{font-size:52px;text-shadow:0 0 10px #fff}
-p{color:#aaa;margin:10px 0 20px}
-input{width:100%;padding:10px;margin:6px 0;background:#111;border:1px solid #333;color:#fff;border-radius:8px}
-button{margin-top:10px;padding:10px 20px;border-radius:20px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer}
+
+.center{
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  text-align:center;
+  width:90%;max-width:420px
+}
+
+h1{font-size:52px;text-shadow:0 0 10px currentColor}
+
+input, select{
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+  background:#111;
+  border:1px solid #333;
+  color:#fff;
+  border-radius:8px
+}
+
+button{
+  margin-top:10px;
+  padding:10px 20px;
+  border-radius:20px;
+  border:1px solid #fff;
+  background:transparent;
+  color:#fff;
+  cursor:pointer
+}
 button:hover{background:#fff;color:#000}
-.links a{display:block;margin:8px auto;padding:10px;border:1px solid #fff;border-radius:20px;text-decoration:none;color:#fff;width:200px}
-.generated{display:block;margin-top:15px;font-size:12px;color:#0af;word-break:break-all}
+
+.linkRow{
+  display:flex;
+  gap:6px;
+}
+
+.links a{
+  display:block;
+  margin:8px auto;
+  padding:10px;
+  border:1px solid #fff;
+  border-radius:20px;
+  text-decoration:none;
+  color:#fff;
+  width:220px;
+  transition:.2s;
+}
+.links a:hover{background:#fff;color:#000}
+
+.links i{margin-right:8px}
+.generated{display:block;margin-top:15px;font-size:12px;color:#0af}
+
 img{border-radius:50%;margin-bottom:10px}
+
+/* THEMES */
+.theme-purple {color:#c084fc}
+.theme-blue {color:#38bdf8}
 </style>
 </head>
 <body>
@@ -26,21 +85,26 @@ img{border-radius:50%;margin-bottom:10px}
 
 <div class="center" id="app">
   <h1>create</h1>
-  <p>make your page</p>
 
   <input id="username" placeholder="username">
   <input id="bio" placeholder="bio">
   <input id="pfp" placeholder="profile image URL">
 
+  <select id="theme">
+    <option value="">default</option>
+    <option value="theme-purple">purple</option>
+    <option value="theme-blue">blue</option>
+  </select>
+
   <div id="linksContainer">
-    <div class="linkRow">
-      <input placeholder="link title">
-      <input class="link" placeholder="https://...">
+    <div class="linkRow" draggable="true">
+      <input placeholder="title">
+      <input class="link" placeholder="url">
     </div>
   </div>
 
   <button onclick="addLink()">+ add link</button>
-  <button onclick="createProfile()">create</button>
+  <button onclick="createProfile()">save</button>
 
   <a id="output" class="generated"></a>
 </div>
@@ -58,98 +122,131 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// add link row
-window.addLink = () => {
-  const div = document.createElement('div');
-  div.className = "linkRow";
-  div.innerHTML = `
-    <input placeholder="link title">
-    <input class="link" placeholder="https://...">
+// ICONS
+function getIcon(url){
+  if(url.includes("github")) return "fa-brands fa-github";
+  if(url.includes("discord")) return "fa-brands fa-discord";
+  if(url.includes("youtube")) return "fa-brands fa-youtube";
+  return "fa-solid fa-link";
+}
+
+// DRAG SORT
+let dragged;
+
+document.addEventListener("dragstart", e=>{
+  if(e.target.classList.contains("linkRow")){
+    dragged = e.target;
+  }
+});
+
+document.addEventListener("dragover", e=>{
+  e.preventDefault();
+  const container = document.getElementById("linksContainer");
+  const after = [...container.children].find(child=>{
+    return e.clientY < child.getBoundingClientRect().top + child.offsetHeight/2;
+  });
+  container.insertBefore(dragged, after);
+});
+
+// ADD LINK
+window.addLink = ()=>{
+  const div=document.createElement('div');
+  div.className="linkRow";
+  div.draggable=true;
+  div.innerHTML=`
+    <input placeholder="title">
+    <input class="link" placeholder="url">
   `;
   document.getElementById('linksContainer').appendChild(div);
 };
 
-// save profile
-window.createProfile = async () => {
-  const username = document.getElementById('username').value;
-  const bio = document.getElementById('bio').value;
-  const pfp = document.getElementById('pfp').value;
+// SAVE
+window.createProfile = async ()=>{
+  const username=document.getElementById('username').value.trim();
+  if(!username) return alert("enter username");
 
-  const links = [...document.querySelectorAll('.linkRow')]
-    .map(row => {
-      const title = row.children[0].value;
-      const url = row.children[1].value;
-      if (!title || !url) return null;
-      return { title, url };
-    })
-    .filter(x => x);
+  const ref=doc(db,"users",username);
+  const existing=await getDoc(ref);
+  const owner=localStorage.getItem("owner_"+username);
 
-  await setDoc(doc(db, "users", username), {
-    bio,
-    pfp,
-    links
-  });
+  if(existing.exists() && !owner){
+    alert("username taken");
+    return;
+  }
 
-  const url = `${location.origin}${location.pathname}?user=${username}`;
-  document.getElementById('output').innerText = url;
+  const bio=document.getElementById('bio').value;
+  const pfp=document.getElementById('pfp').value;
+  const theme=document.getElementById('theme').value;
+
+  const links=[...document.querySelectorAll('.linkRow')]
+    .map(r=>{
+      const t=r.children[0].value;
+      const u=r.children[1].value;
+      if(!t||!u)return null;
+      return {title:t,url:u};
+    }).filter(x=>x);
+
+  await setDoc(ref,{bio,pfp,links,theme});
+  localStorage.setItem("owner_"+username,"true");
+
+  document.getElementById('output').innerText=
+    `${location.origin}${location.pathname}?user=${username}`;
 };
 
-// particles
+// PARTICLES
 function startParticles(){
-  const canvas=document.getElementById('bg');
-  const ctx=canvas.getContext('2d');
-  function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
-  resize();
-  addEventListener('resize',resize);
+  const c=document.getElementById('bg');
+  const ctx=c.getContext('2d');
+  function resize(){c.width=innerWidth;c.height=innerHeight}
+  resize();addEventListener('resize',resize);
 
-  let particles=Array.from({length:80},()=>({
-    x:Math.random()*canvas.width,
-    y:Math.random()*canvas.height,
-    vx:(Math.random()-.5)*0.3,
-    vy:(Math.random()-.5)*0.3
+  let p=Array.from({length:80},()=>({
+    x:Math.random()*c.width,y:Math.random()*c.height,
+    vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3
   }));
 
   function loop(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    particles.forEach(p=>{
-      p.x+=p.vx;p.y+=p.vy;
-      if(p.x<0||p.x>canvas.width)p.vx*=-1;
-      if(p.y<0||p.y>canvas.height)p.vy*=-1;
-      ctx.fillStyle='white';
-      ctx.fillRect(p.x,p.y,1.5,1.5);
+    ctx.clearRect(0,0,c.width,c.height);
+    p.forEach(pt=>{
+      pt.x+=pt.vx;pt.y+=pt.vy;
+      if(pt.x<0||pt.x>c.width)pt.vx*=-1;
+      if(pt.y<0||pt.y>c.height)pt.vy*=-1;
+      ctx.fillRect(pt.x,pt.y,1.5,1.5);
     });
     requestAnimationFrame(loop);
   }
   loop();
 }
 
-// load profile
-const params = new URLSearchParams(location.search);
-if (params.get("user")) {
-  const username = params.get("user");
+// LOAD PROFILE
+const params=new URLSearchParams(location.search);
+if(params.get("user")){
+  const username=params.get("user");
+  const snap=await getDoc(doc(db,"users",username));
 
-  const ref = doc(db, "users", username);
-  const snap = await getDoc(ref);
+  if(snap.exists()){
+    const d=snap.data();
 
-  if (snap.exists()) {
-    const data = snap.data();
+    document.body.className=d.theme||"";
 
-    document.body.innerHTML = `
+    document.body.innerHTML=`
     <canvas id="bg"></canvas>
     <div class="center">
-      ${data.pfp ? `<img src="${data.pfp}" width="100">` : ""}
+      ${d.pfp?`<img src="${d.pfp}" width="100">`:""}
       <h1>${username}</h1>
-      <p>${data.bio || ''}</p>
+      <p>${d.bio||""}</p>
       <div class="links">
-        ${data.links.map(l => `<a href="${l.url}" target="_blank">${l.title}</a>`).join('')}
+        ${d.links.map(l=>`
+          <a href="${l.url}" target="_blank">
+            <i class="${getIcon(l.url)}"></i> ${l.title}
+          </a>`).join("")}
       </div>
     </div>`;
-
     startParticles();
-  } else {
-    document.body.innerHTML = "<h1 style='text-align:center'>User not found</h1>";
+  }else{
+    document.body.innerHTML="user not found";
   }
-} else {
+}else{
   startParticles();
 }
 </script>
