@@ -56,11 +56,6 @@ button:hover{background:#fff;color:#000}
 
 img{border-radius:50%}
 
-.links input{
-  margin-bottom:6px;
-}
-
-/* themes */
 .theme-purple{color:#c084fc}
 .theme-blue{color:#38bdf8}
 .theme-red{color:#f87171}
@@ -87,9 +82,9 @@ const app = document.getElementById("app");
 
 let user = JSON.parse(localStorage.getItem("discordUser") || "null");
 
-/* =======================
+/* =========================
    DISCORD LOGIN
-======================= */
+========================= */
 window.loginDiscord = () => {
   const popup = window.open(
     "https://biolnk.snutdddee.workers.dev/login",
@@ -107,16 +102,16 @@ window.loginDiscord = () => {
   });
 };
 
-/* =======================
+/* =========================
    ROUTE
-======================= */
-const route = location.hash.replace("#/","");
+========================= */
+const route = location.hash.replace("#/","").toLowerCase();
 
-/* =======================
-   PROFILE VIEW
-======================= */
-async function loadProfile(id){
-  const snap = await getDoc(doc(db,"users",id));
+/* =========================
+   LOAD PROFILE
+========================= */
+async function loadProfile(username){
+  const snap = await getDoc(doc(db,"users",username));
 
   if(!snap.exists()){
     app.innerHTML = "<h1>not found</h1>";
@@ -127,7 +122,7 @@ async function loadProfile(id){
 
   app.innerHTML = `
     ${d.pfp ? `<img src="${d.pfp}" width="90">` : ""}
-    <h1 class="${d.theme || ""}">${d.username || id}</h1>
+    <h1 class="${d.theme || ""}">${d.username}</h1>
     <p>${d.bio || ""}</p>
 
     <div>
@@ -138,9 +133,9 @@ async function loadProfile(id){
   `;
 }
 
-/* =======================
+/* =========================
    LOGIN SCREEN
-======================= */
+========================= */
 function showLogin(){
   app.innerHTML = `
     <h2>biolnk</h2>
@@ -148,12 +143,10 @@ function showLogin(){
   `;
 }
 
-/* =======================
+/* =========================
    EDITOR
-======================= */
+========================= */
 function loadEditor(){
-
-  const id = user.id;
 
   app.innerHTML = `
     <h2>editor</h2>
@@ -192,8 +185,10 @@ function loadEditor(){
 
   let file = null;
 
-  /* LOAD */
-  getDoc(doc(db,"users",id)).then(snap=>{
+  /* LOAD EXISTING PROFILE */
+  const uname = user.username.toLowerCase();
+
+  getDoc(doc(db,"users",uname)).then(snap=>{
     if(snap.exists()){
       const d = snap.data();
       username.value = d.username || "";
@@ -202,7 +197,7 @@ function loadEditor(){
     }
   });
 
-  /* IMAGE */
+  /* IMAGE UPLOAD */
   upload.onclick = () => {
     const i = document.createElement("input");
     i.type = "file";
@@ -232,7 +227,7 @@ function loadEditor(){
     links.appendChild(r);
   };
 
-  /* SAVE FIXED */
+  /* SAVE */
   document.getElementById("save").onclick = async () => {
     try {
 
@@ -246,11 +241,14 @@ function loadEditor(){
         });
       }
 
-      await setDoc(doc(db,"users",id),{
-        username: username.value,
+      const uname = username.value.trim().toLowerCase();
+
+      await setDoc(doc(db,"users",uname), {
+        username: uname,
         bio: bio.value,
         theme: theme.value,
         pfp: img || "",
+        ownerId: user.id, // security marker
         links: [...links.children].map(r=>({
           title:r.children[0].value,
           url:r.children[1].value
@@ -258,21 +256,22 @@ function loadEditor(){
       });
 
       out.innerText = "saved ✔";
-      location.hash = "#/" + id;
+
+      location.hash = "#/" + uname;
 
     } catch(err){
       console.error(err);
-      out.innerText = "save failed ❌";
+      out.innerText = "save failed ❌ check console";
     }
   };
 }
 
-/* =======================
-   START APP SAFELY
-======================= */
+/* =========================
+   START
+========================= */
 (async function start(){
 
-  try {
+  try{
 
     if(route){
       await loadProfile(route);
@@ -286,7 +285,7 @@ function loadEditor(){
 
   } catch(e){
     console.error(e);
-    app.innerHTML = "<h1>app error</h1>";
+    app.innerHTML = "app crashed ❌";
   }
 
 })();
