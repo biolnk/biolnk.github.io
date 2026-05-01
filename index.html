@@ -10,7 +10,13 @@
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:'Space Grotesk',sans-serif;background:#000;color:#fff;overflow:hidden}
+body{
+  margin:0;
+  font-family:'Space Grotesk',sans-serif;
+  background:#000;
+  color:#fff;
+  overflow:hidden;
+}
 
 /* splash */
 #splash{
@@ -22,11 +28,13 @@ body{margin:0;font-family:'Space Grotesk',sans-serif;background:#000;color:#fff;
 }
 @keyframes fadeOut{to{opacity:0;visibility:hidden}}
 
-/* cursor */
+/* cursor glow */
 .cursor{
-  position:fixed;width:180px;height:180px;
+  position:fixed;
+  width:200px;height:200px;
   background:radial-gradient(circle,rgba(255,255,255,0.15),transparent);
-  pointer-events:none;transform:translate(-50%,-50%);
+  pointer-events:none;
+  transform:translate(-50%,-50%);
 }
 
 /* canvas */
@@ -34,20 +42,32 @@ canvas{position:fixed;top:0;left:0}
 
 /* card */
 .center{
-  position:absolute;top:50%;left:50%;
+  position:absolute;
+  top:50%;left:50%;
   transform:translate(-50%,-50%);
-  text-align:center;width:90%;max-width:420px;
-  padding:20px;border-radius:20px;
-  backdrop-filter:blur(12px);
-  border:1px solid rgba(255,255,255,0.1);
+  text-align:center;
+  width:90%;max-width:420px;
+  padding:25px;
+  border-radius:24px;
+
+  background:rgba(10,10,30,0.4);
+  backdrop-filter:blur(20px);
+
+  border:1px solid rgba(255,255,255,0.15);
+  box-shadow:0 0 40px rgba(255,255,255,0.05);
+
   transition:transform .1s;
 }
 
 h1{
   font-size:44px;
-  text-shadow:0 0 15px currentColor;
+  text-shadow:
+    0 0 10px #fff,
+    0 0 20px #88ccff,
+    0 0 40px #4488ff;
 }
 
+/* links */
 .links a{
   display:block;margin:10px auto;padding:12px;
   border-radius:20px;text-decoration:none;
@@ -60,6 +80,7 @@ h1{
   background:#fff;color:#000;
 }
 
+/* inputs */
 input,select{
   width:100%;padding:10px;margin:6px 0;
   background:#111;border:1px solid #333;
@@ -78,17 +99,17 @@ button:hover{
 }
 
 .upload{
-  border:2px dashed #555;padding:20px;
-  border-radius:12px;margin:10px 0;
+  border:2px dashed #555;
+  padding:20px;
+  border-radius:12px;
+  margin:10px 0;
 }
 
-/* THEMES */
-.theme-purple{color:#c084fc}
-.theme-blue{color:#38bdf8}
-.theme-red{color:#f87171}
-.theme-green{color:#4ade80}
-.theme-gold{color:#facc15}
-.theme-cyber{color:#0ff;text-shadow:0 0 10px #0ff}
+/* themes */
+.theme-space{
+  color:#8ab4ff;
+  text-shadow:0 0 12px #8ab4ff, 0 0 30px #4f7cff;
+}
 </style>
 </head>
 <body>
@@ -109,6 +130,7 @@ const db = getFirestore(initializeApp({
 }));
 
 const app = document.getElementById("app");
+const cursor = document.getElementById("cursor");
 
 // cursor
 document.addEventListener("mousemove",e=>{
@@ -145,31 +167,55 @@ function icon(url){
   return "fa-solid fa-link";
 }
 
-// ⭐ constellations
+// 🌌 stars + planets
 function stars(){
   const c=bg,ctx=c.getContext("2d");
-  function resize(){c.width=innerWidth;c.height=innerHeight}
-  resize();addEventListener("resize",resize);
 
-  let s=Array.from({length:80},()=>({
+  function resize(){
+    c.width=innerWidth;
+    c.height=innerHeight;
+  }
+  resize();
+  addEventListener("resize",resize);
+
+  let stars=Array.from({length:120},()=>({
     x:Math.random()*c.width,
     y:Math.random()*c.height,
-    vx:(Math.random()-.5)*0.2,
-    vy:(Math.random()-.5)*0.2
+    r:Math.random()*1.5,
+    vx:(Math.random()-.5)*0.1,
+    vy:(Math.random()-.5)*0.1
+  }));
+
+  let planets=Array.from({length:4},(_,i)=>({
+    x:Math.random()*c.width,
+    y:Math.random()*c.height,
+    r:20+Math.random()*30,
+    angle:Math.random()*Math.PI*2,
+    speed:0.002+(i*0.001),
+    orbit:40+Math.random()*80,
+    color:`hsl(${Math.random()*360},70%,60%)`
   }));
 
   function loop(){
     ctx.fillStyle="#000";
     ctx.fillRect(0,0,c.width,c.height);
 
-    s.forEach(a=>{
-      a.x+=a.vx;a.y+=a.vy;
+    // stars
+    stars.forEach(a=>{
+      a.x+=a.vx;
+      a.y+=a.vy;
       if(a.x<0||a.x>c.width)a.vx*=-1;
       if(a.y<0||a.y>c.height)a.vy*=-1;
 
-      ctx.fillRect(a.x,a.y,2,2);
+      ctx.beginPath();
+      ctx.arc(a.x,a.y,a.r,0,Math.PI*2);
+      ctx.fillStyle="white";
+      ctx.fill();
+    });
 
-      s.forEach(b=>{
+    // constellations
+    stars.forEach(a=>{
+      stars.forEach(b=>{
         const dx=a.x-b.x,dy=a.y-b.y;
         const d=Math.sqrt(dx*dx+dy*dy);
         if(d<100){
@@ -182,12 +228,45 @@ function stars(){
       });
     });
 
+    // planets
+    planets.forEach(p=>{
+      p.angle+=p.speed;
+      let px=p.x+Math.cos(p.angle)*p.orbit;
+      let py=p.y+Math.sin(p.angle)*p.orbit;
+
+      const g=ctx.createRadialGradient(px,py,0,px,py,p.r*2);
+      g.addColorStop(0,p.color);
+      g.addColorStop(1,"transparent");
+
+      ctx.fillStyle=g;
+      ctx.beginPath();
+      ctx.arc(px,py,p.r*2,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.fillStyle=p.color;
+      ctx.beginPath();
+      ctx.arc(px,py,p.r,0,Math.PI*2);
+      ctx.fill();
+    });
+
+    // shooting stars
+    if(Math.random()<0.003){
+      ctx.strokeStyle="white";
+      ctx.beginPath();
+      let x=Math.random()*c.width;
+      let y=Math.random()*c.height;
+      ctx.moveTo(x,y);
+      ctx.lineTo(x+80,y+20);
+      ctx.stroke();
+    }
+
     requestAnimationFrame(loop);
   }
+
   loop();
 }
 
-// typing effect
+// typing
 function typeText(el,text){
   el.innerHTML="";
   let i=0;
@@ -200,7 +279,7 @@ function typeText(el,text){
   t();
 }
 
-// image compress
+// image resize
 function resizeToBase64(file){
   return new Promise(r=>{
     const img=new Image();
@@ -223,7 +302,6 @@ function resizeToBase64(file){
 // routing
 const user = location.hash.replace("#/","");
 
-// VIEW
 if(user){
   const snap=await getDoc(doc(db,"users",user));
   if(!snap.exists()){
@@ -249,7 +327,6 @@ if(user){
 
 }else{
 
-// EDITOR
 app.innerHTML=`
 <h1>create</h1>
 <input id="usernameInput" placeholder="username">
@@ -260,12 +337,7 @@ app.innerHTML=`
 
 <select id="theme">
 <option value="">default</option>
-<option value="theme-purple">purple</option>
-<option value="theme-blue">blue</option>
-<option value="theme-red">red</option>
-<option value="theme-green">green</option>
-<option value="theme-gold">gold</option>
-<option value="theme-cyber">cyber</option>
+<option value="theme-space">space</option>
 </select>
 
 <div id="links"></div>
