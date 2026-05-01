@@ -31,11 +31,22 @@ img{border-radius:50%;margin-bottom:10px}
 <canvas id="bg"></canvas>
 <div class="center" id="app"></div>
 
-<script>
-// ---------- SAFE ELEMENT ----------
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCsWG4bQeRA8SvR6BQKu-l4DGsfk22iqHg",
+  authDomain: "bluesharklethal.firebaseapp.com",
+  projectId: "bluesharklethal",
+};
+
+const appFirebase = initializeApp(firebaseConfig);
+const db = getFirestore(appFirebase);
+
 const app = document.getElementById("app");
 
-// ---------- ICONS ----------
+// ICONS
 function icon(url){
   if(url.includes("github")) return "fa-brands fa-github";
   if(url.includes("discord")) return "fa-brands fa-discord";
@@ -43,7 +54,7 @@ function icon(url){
   return "fa-solid fa-link";
 }
 
-// ---------- PARTICLES ----------
+// PARTICLES
 function particles(){
   const c=document.getElementById('bg');
   const ctx=c.getContext('2d');
@@ -64,7 +75,6 @@ function particles(){
       pt.x+=pt.vx; pt.y+=pt.vy;
       if(pt.x<0||pt.x>c.width)pt.vx*=-1;
       if(pt.y<0||pt.y>c.height)pt.vy*=-1;
-      ctx.fillStyle="white";
       ctx.fillRect(pt.x,pt.y,1.5,1.5);
     });
     requestAnimationFrame(loop);
@@ -72,24 +82,23 @@ function particles(){
   loop();
 }
 
-// ---------- ROUTING ----------
-const route = location.hash.replace("#/","");
+// ROUTING (#/user)
+const username = location.hash.replace("#/","");
 
-// ---------- VIEW PROFILE ----------
-if(route){
-  const raw = localStorage.getItem("profile_"+route);
+// VIEW PROFILE
+if(username){
+  const snap = await getDoc(doc(db,"users",username));
 
-  if(!raw){
-    app.innerHTML = "<h1>user not found</h1>";
-    particles();
+  if(!snap.exists()){
+    app.innerHTML="<h1>user not found</h1>";
   } else {
-    const data = JSON.parse(raw);
+    const data = snap.data();
 
     document.body.className = data.theme || "";
 
     app.innerHTML = `
       ${data.pfp ? `<img src="${data.pfp}" width="100">` : ""}
-      <h1>${route}</h1>
+      <h1>${username}</h1>
       <p>${data.bio || ""}</p>
       <div class="links">
         ${data.links.map(l=>`
@@ -99,17 +108,16 @@ if(route){
         `).join("")}
       </div>
     `;
-
-    particles();
   }
 
+  particles();
 } else {
 
-// ---------- EDITOR ----------
+// EDITOR
 app.innerHTML = `
 <h1>create</h1>
 
-<input id="username" placeholder="username">
+<input id="usernameInput" placeholder="username">
 <input id="bio" placeholder="bio">
 <input id="pfp" placeholder="profile image URL">
 
@@ -132,7 +140,7 @@ app.innerHTML = `
 <p id="out"></p>
 `;
 
-// ---------- ADD LINK ----------
+// ADD LINK
 window.addLink = () => {
   const d = document.createElement("div");
   d.className = "linkRow";
@@ -141,7 +149,7 @@ window.addLink = () => {
   document.getElementById("links").appendChild(d);
 };
 
-// ---------- DRAG ----------
+// DRAG
 let dragged = null;
 
 document.addEventListener("dragstart", e => {
@@ -159,10 +167,19 @@ document.addEventListener("dragover", e => {
   container.insertBefore(dragged, after);
 });
 
-// ---------- SAVE ----------
-window.saveProfile = () => {
-  const username = document.getElementById("username").value.trim();
+// SAVE
+window.saveProfile = async () => {
+  const username = document.getElementById("usernameInput").value.trim();
   if(!username) return alert("enter username");
+
+  const ref = doc(db,"users",username);
+  const existing = await getDoc(ref);
+  const owner = localStorage.getItem("owner_"+username);
+
+  if(existing.exists() && !owner){
+    alert("username taken");
+    return;
+  }
 
   const data = {
     bio: document.getElementById("bio").value,
@@ -177,10 +194,11 @@ window.saveProfile = () => {
       }).filter(x=>x)
   };
 
-  localStorage.setItem("profile_"+username, JSON.stringify(data));
+  await setDoc(ref, data);
+  localStorage.setItem("owner_"+username,"true");
 
-  const url = location.origin + location.pathname + "#/" + username;
-  document.getElementById("out").innerText = url;
+  document.getElementById("out").innerText =
+    location.origin + location.pathname + "#/" + username;
 };
 
 particles();
