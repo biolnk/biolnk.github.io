@@ -10,200 +10,49 @@
 
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:'Space Grotesk',sans-serif;
-  background:#000;
-  color:#fff;
-  overflow:hidden;
-  transition:0.3s;
-}
+body{margin:0;font-family:'Space Grotesk',sans-serif;background:#000;color:#fff;overflow:hidden;transition:.3s}
 canvas{position:fixed;top:0;left:0;z-index:-1}
-
-.center{
-  position:absolute;
-  top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  text-align:center;
-  width:90%;max-width:420px
-}
-
+.center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:90%;max-width:420px}
 h1{font-size:52px;text-shadow:0 0 10px currentColor}
-
-input, select{
-  width:100%;
-  padding:10px;
-  margin:6px 0;
-  background:#111;
-  border:1px solid #333;
-  color:#fff;
-  border-radius:8px
-}
-
-button{
-  margin-top:10px;
-  padding:10px 20px;
-  border-radius:20px;
-  border:1px solid #fff;
-  background:transparent;
-  color:#fff;
-  cursor:pointer
-}
+input,select{width:100%;padding:10px;margin:6px 0;background:#111;border:1px solid #333;color:#fff;border-radius:8px}
+button{margin-top:10px;padding:10px 20px;border-radius:20px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer}
 button:hover{background:#fff;color:#000}
 
-.linkRow{
-  display:flex;
-  gap:6px;
-}
-
-.links a{
-  display:block;
-  margin:8px auto;
-  padding:10px;
-  border:1px solid #fff;
-  border-radius:20px;
-  text-decoration:none;
-  color:#fff;
-  width:220px;
-  transition:.2s;
-}
+.linkRow{display:flex;gap:6px}
+.links a{display:block;margin:8px auto;padding:10px;border:1px solid #fff;border-radius:20px;text-decoration:none;color:#fff;width:220px}
 .links a:hover{background:#fff;color:#000}
-
 .links i{margin-right:8px}
-.generated{display:block;margin-top:15px;font-size:12px;color:#0af}
 
 img{border-radius:50%;margin-bottom:10px}
 
-/* THEMES */
-.theme-purple {color:#c084fc}
-.theme-blue {color:#38bdf8}
+.theme-purple{color:#c084fc}
+.theme-blue{color:#38bdf8}
 </style>
 </head>
 <body>
 
 <canvas id="bg"></canvas>
+<div class="center" id="app"></div>
 
-<div class="center" id="app">
-  <h1>create</h1>
-
-  <input id="username" placeholder="username">
-  <input id="bio" placeholder="bio">
-  <input id="pfp" placeholder="profile image URL">
-
-  <select id="theme">
-    <option value="">default</option>
-    <option value="theme-purple">purple</option>
-    <option value="theme-blue">blue</option>
-  </select>
-
-  <div id="linksContainer">
-    <div class="linkRow" draggable="true">
-      <input placeholder="title">
-      <input class="link" placeholder="url">
-    </div>
-  </div>
-
-  <button onclick="addLink()">+ add link</button>
-  <button onclick="createProfile()">save</button>
-
-  <a id="output" class="generated"></a>
-</div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCsWG4bQeRA8SvR6BQKu-l4DGsfk22iqHg",
-  authDomain: "bluesharklethal.firebaseapp.com",
-  projectId: "bluesharklethal",
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+<script>
+const app=document.getElementById("app");
 
 // ICONS
-function getIcon(url){
+function icon(url){
   if(url.includes("github")) return "fa-brands fa-github";
   if(url.includes("discord")) return "fa-brands fa-discord";
   if(url.includes("youtube")) return "fa-brands fa-youtube";
   return "fa-solid fa-link";
 }
 
-// DRAG SORT
-let dragged;
-
-document.addEventListener("dragstart", e=>{
-  if(e.target.classList.contains("linkRow")){
-    dragged = e.target;
-  }
-});
-
-document.addEventListener("dragover", e=>{
-  e.preventDefault();
-  const container = document.getElementById("linksContainer");
-  const after = [...container.children].find(child=>{
-    return e.clientY < child.getBoundingClientRect().top + child.offsetHeight/2;
-  });
-  container.insertBefore(dragged, after);
-});
-
-// ADD LINK
-window.addLink = ()=>{
-  const div=document.createElement('div');
-  div.className="linkRow";
-  div.draggable=true;
-  div.innerHTML=`
-    <input placeholder="title">
-    <input class="link" placeholder="url">
-  `;
-  document.getElementById('linksContainer').appendChild(div);
-};
-
-// SAVE
-window.createProfile = async ()=>{
-  const username=document.getElementById('username').value.trim();
-  if(!username) return alert("enter username");
-
-  const ref=doc(db,"users",username);
-  const existing=await getDoc(ref);
-  const owner=localStorage.getItem("owner_"+username);
-
-  if(existing.exists() && !owner){
-    alert("username taken");
-    return;
-  }
-
-  const bio=document.getElementById('bio').value;
-  const pfp=document.getElementById('pfp').value;
-  const theme=document.getElementById('theme').value;
-
-  const links=[...document.querySelectorAll('.linkRow')]
-    .map(r=>{
-      const t=r.children[0].value;
-      const u=r.children[1].value;
-      if(!t||!u)return null;
-      return {title:t,url:u};
-    }).filter(x=>x);
-
-  await setDoc(ref,{bio,pfp,links,theme});
-  localStorage.setItem("owner_"+username,"true");
-
-  document.getElementById('output').innerText=
-    `${location.origin}${location.pathname}?user=${username}`;
-};
-
 // PARTICLES
-function startParticles(){
+function particles(){
   const c=document.getElementById('bg');
   const ctx=c.getContext('2d');
   function resize(){c.width=innerWidth;c.height=innerHeight}
   resize();addEventListener('resize',resize);
 
-  let p=Array.from({length:80},()=>({
-    x:Math.random()*c.width,y:Math.random()*c.height,
-    vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3
-  }));
+  let p=Array.from({length:80},()=>({x:Math.random()*c.width,y:Math.random()*c.height,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3}));
 
   function loop(){
     ctx.clearRect(0,0,c.width,c.height);
@@ -218,37 +67,120 @@ function startParticles(){
   loop();
 }
 
-// LOAD PROFILE
-const params=new URLSearchParams(location.search);
-if(params.get("user")){
-  const username=params.get("user");
-  const snap=await getDoc(doc(db,"users",username));
+// ROUTING (#/user)
+const route=location.hash.replace("#/","");
 
-  if(snap.exists()){
-    const d=snap.data();
-
-    document.body.className=d.theme||"";
-
-    document.body.innerHTML=`
-    <canvas id="bg"></canvas>
-    <div class="center">
-      ${d.pfp?`<img src="${d.pfp}" width="100">`:""}
-      <h1>${username}</h1>
-      <p>${d.bio||""}</p>
+// VIEW PROFILE
+if(route){
+  const data=JSON.parse(localStorage.getItem("profile_"+route));
+  if(!data){
+    app.innerHTML="<h1>not found</h1>";
+  }else{
+    document.body.className=data.theme||"";
+    app.innerHTML=`
+      ${data.pfp?`<img src="${data.pfp}" width="100">`:""}
+      <h1>${route}</h1>
+      <p>${data.bio||""}</p>
       <div class="links">
-        ${d.links.map(l=>`
+        ${data.links.map(l=>`
           <a href="${l.url}" target="_blank">
-            <i class="${getIcon(l.url)}"></i> ${l.title}
+            <i class="${icon(l.url)}"></i> ${l.title}
           </a>`).join("")}
       </div>
-    </div>`;
-    startParticles();
-  }else{
-    document.body.innerHTML="user not found";
+    `;
   }
-}else{
-  startParticles();
+  particles();
+  return;
 }
+
+// EDITOR
+app.innerHTML=`
+<h1>create</h1>
+
+<input id="username" placeholder="username">
+<input id="bio" placeholder="bio">
+<input id="pfp" placeholder="profile image URL">
+
+<select id="theme">
+  <option value="">default</option>
+  <option value="theme-purple">purple</option>
+  <option value="theme-blue">blue</option>
+</select>
+
+<div id="links">
+  <div class="linkRow" draggable="true">
+    <input placeholder="title">
+    <input placeholder="url">
+  </div>
+</div>
+
+<button onclick="add()">+ link</button>
+<button onclick="save()">save</button>
+<button onclick="exportData()">export</button>
+<button onclick="importData()">import</button>
+
+<p id="out"></p>
+`;
+
+// ADD LINK
+window.add=()=>{
+  const d=document.createElement("div");
+  d.className="linkRow";
+  d.draggable=true;
+  d.innerHTML=`<input placeholder="title"><input placeholder="url">`;
+  document.getElementById("links").appendChild(d);
+};
+
+// DRAG
+let drag;
+document.addEventListener("dragstart",e=>{
+  if(e.target.classList.contains("linkRow")) drag=e.target;
+});
+document.addEventListener("dragover",e=>{
+  e.preventDefault();
+  const c=document.getElementById("links");
+  const after=[...c.children].find(el=>e.clientY<el.offsetTop+el.offsetHeight/2);
+  c.insertBefore(drag,after);
+});
+
+// SAVE
+window.save=()=>{
+  const u=username.value.trim();
+  if(!u)return alert("username");
+
+  const data={
+    bio:bio.value,
+    pfp:pfp.value,
+    theme:theme.value,
+    links:[...document.querySelectorAll(".linkRow")].map(r=>{
+      const t=r.children[0].value;
+      const url=r.children[1].value;
+      if(!t||!url)return null;
+      return {title:t,url};
+    }).filter(x=>x)
+  };
+
+  localStorage.setItem("profile_"+u,JSON.stringify(data));
+  out.innerText=location.origin+location.pathname+"#/"+
+u;
+};
+
+// EXPORT
+window.exportData=()=>{
+  const u=username.value;
+  const data=localStorage.getItem("profile_"+u);
+  navigator.clipboard.writeText(data);
+  alert("copied");
+};
+
+// IMPORT
+window.importData=()=>{
+  const data=prompt("paste data");
+  const u=prompt("username");
+  localStorage.setItem("profile_"+u,data);
+};
+
+particles();
 </script>
 
 </body>
