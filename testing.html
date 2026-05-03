@@ -5,100 +5,160 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>biolnk</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- FONT -->
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
 
 <style>
-:root {
-  --bg:#0a0a12;
-  --surface:#11111a;
-  --border:#1f1f2a;
-  --text:#e5e7eb;
-  --muted:#9ca3af;
-  --accent:#5865F2;
+:root{
+--bg:#080810;
+--border:rgba(255,255,255,0.08);
+--text:#f5f5f7;
+--muted:rgba(255,255,255,0.5);
+--accent:#5865F2;
 }
 
-*{box-sizing:border-box;margin:0;padding:0;}
+/* 🔥 FORCE FONT EVERYWHERE */
+html, body, * {
+font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+*{
+box-sizing:border-box;
+margin:0;
+padding:0;
+}
 
 body{
-  font-family:'Inter',system-ui;
-  background:var(--bg);
-  color:var(--text);
+background:radial-gradient(circle at 50% 20%, #101020, #050508 80%);
+color:var(--text);
+min-height:100vh;
+overflow:hidden;
+-webkit-font-smoothing:antialiased;
 }
 
+/* canvas */
 canvas{
-  position:fixed;
-  inset:0;
-  z-index:0;
+position:fixed;
+inset:0;
+z-index:0;
 }
 
+/* layout */
 #root{
-  position:relative;
-  z-index:1;
-  min-height:100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+position:relative;
+z-index:1;
+display:flex;
+align-items:center;
+justify-content:center;
+min-height:100vh;
+padding:20px;
 }
 
+/* card */
 .card{
-  width:100%;
-  max-width:420px;
-  background:rgba(17,17,26,0.9);
-  border:1px solid var(--border);
-  border-radius:18px;
-  padding:28px;
-  backdrop-filter:blur(20px);
+width:100%;
+max-width:420px;
+padding:34px;
+border-radius:22px;
+background:rgba(12,12,22,0.72);
+border:1px solid var(--border);
+backdrop-filter:blur(28px);
+box-shadow:0 20px 60px rgba(0,0,0,0.55);
 }
 
+/* text */
 .wordmark{
-  font-size:22px;
-  font-weight:700;
-  letter-spacing:-0.02em;
-  margin-bottom:6px;
+font-weight:600;
+font-size:24px;
+letter-spacing:-0.3px;
+color:#fff;
+}
+
+.wordmark span{
+opacity:0.6;
 }
 
 .tagline{
-  font-size:13px;
-  color:var(--muted);
-  margin-bottom:20px;
+font-size:13px;
+color:var(--muted);
+margin-top:8px;
+margin-bottom:28px;
 }
 
+/* button */
 .btn{
-  width:100%;
-  padding:12px;
-  border-radius:10px;
-  border:none;
-  background:var(--accent);
-  color:#fff;
-  font-weight:600;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
+display:flex;
+align-items:center;
+justify-content:center;
+gap:10px;
+width:100%;
+padding:14px;
+border-radius:12px;
+border:none;
+background:var(--accent);
+color:#fff;
+font-weight:500;
+cursor:pointer;
+transition:.2s;
 }
 
-.btn:hover{opacity:0.9;}
-
-input{
-  width:100%;
-  padding:10px;
-  margin-top:8px;
-  background:var(--surface);
-  border:1px solid var(--border);
-  color:var(--text);
-  border-radius:8px;
+.btn:hover{
+background:#6872f5;
+transform:translateY(-1px);
 }
 
-.links a{
-  display:block;
-  padding:10px;
-  margin-top:6px;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:8px;
-  text-decoration:none;
-  color:var(--text);
+/* ICON FIX */
+.btn svg{
+width:20px;
+height:20px;
+fill:#fff;
+flex-shrink:0;
+}
+
+.footer-discord svg{
+width:16px;
+height:16px;
+fill:#fff;
+flex-shrink:0;
+}
+
+/* footer */
+footer{
+position:fixed;
+bottom:0;
+left:0;
+right:0;
+display:flex;
+justify-content:center;
+padding:14px;
+background:linear-gradient(to top,#080810,transparent);
+}
+
+.footer-discord{
+display:flex;
+align-items:center;
+gap:8px;
+padding:8px 18px;
+border-radius:999px;
+background:rgba(88,101,242,0.12);
+border:1px solid rgba(88,101,242,0.3);
+color:#c7d2fe;
+text-decoration:none;
+font-size:13px;
+}
+
+/* spinner */
+.spinner{
+width:18px;
+height:18px;
+border:2px solid rgba(255,255,255,0.2);
+border-top-color:#fff;
+border-radius:50%;
+animation:spin .7s linear infinite;
+}
+
+@keyframes spin{
+to{transform:rotate(360deg)}
 }
 </style>
 </head>
@@ -108,115 +168,66 @@ input{
 <canvas id="bg"></canvas>
 
 <div id="root">
-  <div class="card" id="app"></div>
+<div class="card" id="app">
+<div style="display:flex;justify-content:center;padding:20px">
+<div class="spinner"></div>
+</div>
+</div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs }
-from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+<footer>
+<a class="footer-discord" href="https://discord.gg/aq3THnu5wC" target="_blank">
+<svg viewBox="0 0 24 24">
+<path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.033.056a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.30z"/>
+</svg>
+Join the Discord
+</a>
+</footer>
 
-const db=getFirestore(initializeApp({
-  apiKey:"AIzaSy...",
-  authDomain:"bluesharklethal.firebaseapp.com",
-  projectId:"bluesharklethal"
+<script>
+/* background */
+const c=document.getElementById("bg");
+const ctx=c.getContext("2d");
+
+function resize(){c.width=innerWidth;c.height=innerHeight;}
+resize();addEventListener("resize",resize);
+
+const stars=Array.from({length:120},()=>({
+x:Math.random()*c.width,
+y:Math.random()*c.height,
+r:Math.random()*1.2,
+v:Math.random()*0.25,
+o:Math.random()
 }));
 
-const app=document.getElementById("app");
-
-let user=JSON.parse(localStorage.getItem("discordUser")||"null");
-
-window.loginDiscord=()=>{
-  const w=window.open("https://biolnk.snutdddee.workers.dev/login","d","width=500,height=700");
-  window.addEventListener("message",(e)=>{
-    if(!e.data?.id)return;
-    user=e.data;
-    localStorage.setItem("discordUser",JSON.stringify(user));
-    start();
-  });
-};
-
-function showLogin(){
-  app.innerHTML=`
-    <div class="wordmark">biolnk</div>
-    <div class="tagline">simple link page</div>
-    <button class="btn" onclick="loginDiscord()">Continue with Discord</button>
-  `;
+function draw(){
+ctx.clearRect(0,0,c.width,c.height);
+stars.forEach(s=>{
+s.y+=s.v;
+if(s.y>c.height){s.y=0;s.x=Math.random()*c.width;}
+ctx.beginPath();
+ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+ctx.fillStyle=`rgba(200,205,255,${s.o})`;
+ctx.fill();
+});
+requestAnimationFrame(draw);
 }
+draw();
 
-async function loadProfile(name){
-  const res=await getDocs(query(collection(db,"users"),where("username","==",name)));
-  if(res.empty){app.innerHTML="not found";return;}
-  const d=res.docs[0].data();
+/* UI */
+document.getElementById("app").innerHTML=`
+<div style="text-align:center">
+<div class="wordmark">bio<span>lnk</span></div>
+<div class="tagline">your link in bio, elevated</div>
 
-  app.innerHTML=`
-    <div class="wordmark">${d.username}</div>
-    <div class="tagline">${d.bio||""}</div>
-    <div class="links">
-      ${(d.links||[]).map(l=>`<a href="${l.url}" target="_blank">${l.title||l.url}</a>`).join("")}
-    </div>
-  `;
-}
-
-function start(){
-  const route=location.hash.replace("#/","");
-  if(route) loadProfile(route);
-  else showLogin();
-}
-start();
-
-/* STARFIELD */
-function stars(){
-  const c=document.getElementById("bg");
-  const ctx=c.getContext("2d");
-  function resize(){c.width=innerWidth;c.height=innerHeight;}
-  resize(); addEventListener("resize",resize);
-
-  const stars=[...Array(120)].map(()=>({
-    x:Math.random()*c.width,
-    y:Math.random()*c.height,
-    r:Math.random()*1.5,
-    v:Math.random()*0.3,
-    o:Math.random(),
-    t:Math.random()*0.02
-  }));
-
-  const shooting=[];
-
-  setInterval(()=>{
-    shooting.push({x:Math.random()*c.width,y:-20,len:100,life:0});
-  },3000);
-
-  function loop(){
-    ctx.clearRect(0,0,c.width,c.height);
-
-    stars.forEach(s=>{
-      s.y+=s.v;
-      s.o+=s.t;
-      if(s.o<0.2||s.o>1)s.t*=-1;
-      if(s.y>c.height){s.y=0;s.x=Math.random()*c.width;}
-
-      ctx.beginPath();
-      ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-      ctx.fillStyle=`rgba(255,255,255,${s.o})`;
-      ctx.fill();
-    });
-
-    shooting.forEach((s,i)=>{
-      s.x+=6; s.y+=6; s.life++;
-      ctx.beginPath();
-      ctx.moveTo(s.x,s.y);
-      ctx.lineTo(s.x-s.len,s.y-s.len);
-      ctx.strokeStyle="white";
-      ctx.stroke();
-      if(s.life>50)shooting.splice(i,1);
-    });
-
-    requestAnimationFrame(loop);
-  }
-  loop();
-}
-stars();
+<button class="btn">
+<svg viewBox="0 0 24 24">
+<path d="M20.317 4.37..."/>
+</svg>
+Continue with Discord
+</button>
+</div>
+`;
 </script>
 
 </body>
