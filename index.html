@@ -8,96 +8,42 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:'Space Grotesk',sans-serif;
-  background:#000;
-  color:#fff;
-}
-canvas{
-  position:fixed;
-  top:0;left:0;
-  z-index:-1;
-}
-.center{
-  position:absolute;
-  top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  text-align:center;
-  width:90%;max-width:420px;
-  padding:20px;
-  border-radius:16px;
-  background:rgba(0,0,0,0.6);
-  border:1px solid rgba(255,255,255,0.1);
-  animation:fadeIn .4s ease;
-}
-@keyframes fadeIn{
-  from{opacity:0;transform:translate(-50%,-55%)}
-  to{opacity:1;transform:translate(-50%,-50%)}
-}
+body{margin:0;font-family:'Space Grotesk',sans-serif;background:#000;color:#fff}
+canvas{position:fixed;top:0;left:0;z-index:-1}
+.center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:90%;max-width:420px;padding:20px;border-radius:16px;background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.1);animation:fadeIn .4s ease}
+@keyframes fadeIn{from{opacity:0;transform:translate(-50%,-55%)}to{opacity:1;transform:translate(-50%,-50%)}}
 h1{font-size:40px;margin-bottom:10px}
 p{color:#aaa}
-input,select{
-  width:100%;
-  padding:10px;
-  margin:6px 0;
-  background:#111;
-  border:1px solid #333;
-  color:#fff;
-  border-radius:8px;
-}
-button{
-  margin-top:10px;
-  padding:10px 20px;
-  border-radius:16px;
-  border:1px solid #fff;
-  background:transparent;
-  color:#fff;
-  cursor:pointer;
-}
+input,select{width:100%;padding:10px;margin:6px 0;background:#111;border:1px solid #333;color:#fff;border-radius:8px}
+input.error{border-color:#f87171}
+input.ok{border-color:#4ade80}
+button{margin-top:10px;padding:10px 20px;border-radius:16px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer}
 button:hover{background:#fff;color:#000}
-.links a{
-  display:block;
-  margin:8px auto;
-  padding:10px;
-  border-radius:16px;
-  text-decoration:none;
-  color:#fff;
-  width:220px;
-  border:1px solid rgba(255,255,255,0.2);
-}
+button:disabled{opacity:0.4;cursor:not-allowed}
+button:disabled:hover{background:transparent;color:#fff}
+.links a{display:block;margin:8px auto;padding:10px;border-radius:16px;text-decoration:none;color:#fff;width:220px;border:1px solid rgba(255,255,255,0.2)}
 .links a:hover{background:#fff;color:#000}
 .links i{margin-right:8px}
 img{border-radius:50%;margin-bottom:10px}
-.upload{
-  border:2px dashed #555;
-  padding:16px;
-  border-radius:10px;
-  margin:10px 0;
-  cursor:pointer;
-}
+.upload{border:2px dashed #555;padding:16px;border-radius:10px;margin:10px 0;cursor:pointer}
 .upload:hover{border-color:#fff}
 .theme-purple{color:#c084fc}
 .theme-blue{color:#38bdf8}
 .theme-red{color:#f87171}
 .theme-green{color:#4ade80}
 .theme-gold{color:#facc15}
+.hint{font-size:12px;margin:2px 0 6px;min-height:16px}
+.hint.err{color:#f87171}
+.hint.ok{color:#4ade80}
 </style>
 </head>
 <body>
 <canvas id="bg"></canvas>
 <div class="center" id="app">loading...</div>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore, doc, setDoc, getDoc,
-  collection, query, where, getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* =====================
-   FIREBASE
-===================== */
 let db;
 try {
   db = getFirestore(initializeApp({
@@ -105,53 +51,31 @@ try {
     authDomain: "bluesharklethal.firebaseapp.com",
     projectId: "bluesharklethal"
   }));
-} catch (e) {
-  document.getElementById("app").innerHTML =
-    "<p style='color:#f87171'>firebase failed to load. check your connection.</p>";
+} catch(e) {
+  document.getElementById("app").innerHTML = "<p style='color:#f87171'>firebase failed to load.</p>";
   throw e;
 }
 
 const app = document.getElementById("app");
 
-/* =====================
-   XSS SANITIZER
-===================== */
 function sanitize(str) {
   return String(str ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#x27;");
 }
 
-/* =====================
-   AUTH
-===================== */
 let user = null;
-try {
-  user = JSON.parse(localStorage.getItem("discordUser") || "null");
-} catch (e) {
-  localStorage.removeItem("discordUser");
-}
+try { user = JSON.parse(localStorage.getItem("discordUser") || "null"); }
+catch(e) { localStorage.removeItem("discordUser"); }
 
 window.loginDiscord = () => {
-  const popup = window.open(
-    "https://biolnk.snutdddee.workers.dev/login",
-    "discord",
-    "width=500,height=700"
-  );
-
-  if (!popup) {
-    alert("Pop-up blocked — please allow pop-ups for this site and try again.");
-    return;
-  }
-
-  window.addEventListener("message", (e) => {
+  const popup = window.open("https://biolnk.snutdddee.workers.dev/login","discord","width=500,height=700");
+  if (!popup) { alert("Pop-up blocked — please allow pop-ups and try again."); return; }
+  window.addEventListener("message", async (e) => {
     if (!e.data?.id) return;
     user = e.data;
     localStorage.setItem("discordUser", JSON.stringify(user));
-    loadEditor();
+    await afterLogin();
   });
 };
 
@@ -162,14 +86,19 @@ window.logout = () => {
   showLogin();
 };
 
-/* =====================
-   ROUTING
-===================== */
-const route = location.hash.replace("#/", "").toLowerCase().trim();
+async function afterLogin() {
+  try {
+    const snap = await getDoc(doc(db, "users", user.id));
+    if (snap.exists() && snap.data().username) loadEditor(snap.data().username);
+    else showClaim();
+  } catch(e) {
+    console.error("afterLogin error:", e);
+    app.innerHTML = "<p style='color:#f87171'>something went wrong. try refreshing.</p>";
+  }
+}
 
-/* =====================
-   ICON HELPER
-===================== */
+const route = location.hash.replace("#/","").toLowerCase().trim();
+
 function icon(url) {
   if (!url) return "fa-solid fa-link";
   if (url.includes("github"))    return "fa-brands fa-github";
@@ -181,103 +110,118 @@ function icon(url) {
   return "fa-solid fa-link";
 }
 
-/* =====================
-   STAR BACKGROUND
-===================== */
 function stars() {
   const c = document.getElementById("bg");
   const ctx = c.getContext("2d");
-
-  function resize() {
-    c.width  = innerWidth;
-    c.height = innerHeight;
-  }
-
+  function resize() { c.width = innerWidth; c.height = innerHeight; }
   resize();
   addEventListener("resize", resize);
-
-  const s = Array.from({ length: 70 }, () => ({
-    x: Math.random() * c.width,
-    y: Math.random() * c.height,
-    v: Math.random() * 0.4
-  }));
-
+  const s = Array.from({length:70}, () => ({x:Math.random()*c.width, y:Math.random()*c.height, v:Math.random()*0.4}));
   function loop() {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillStyle="#000"; ctx.fillRect(0,0,c.width,c.height);
     s.forEach(star => {
       star.y += star.v;
-      if (star.y > c.height) {
-        star.y = 0;
-        star.x = Math.random() * c.width;
-      }
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(star.x, star.y, 1.5, 1.5);
+      if (star.y > c.height) { star.y=0; star.x=Math.random()*c.width; }
+      ctx.fillStyle="#fff"; ctx.fillRect(star.x,star.y,1.5,1.5);
     });
     requestAnimationFrame(loop);
   }
-
   loop();
 }
 stars();
 
-/* =====================
-   PROFILE VIEW
-   Queries by username field since
-   docs are keyed by Discord ID.
-===================== */
 async function loadProfile(name) {
   try {
-    const q = query(collection(db, "users"), where("username", "==", name));
+    const q = query(collection(db,"users"), where("username","==",name));
     const results = await getDocs(q);
-
-    if (results.empty) {
-      app.innerHTML = "<h1>user not found</h1>";
-      return;
-    }
-
+    if (results.empty) { app.innerHTML = "<h1>user not found</h1>"; return; }
     const d = results.docs[0].data();
-
     app.innerHTML = `
       ${d.pfp ? `<img src="${sanitize(d.pfp)}" width="100" alt="profile picture">` : ""}
-      <h1 class="${sanitize(d.theme || "")}">${sanitize(d.username)}</h1>
-      <p>${sanitize(d.bio || "")}</p>
+      <h1 class="${sanitize(d.theme||"")}">${sanitize(d.username)}</h1>
+      <p>${sanitize(d.bio||"")}</p>
       <div class="links">
-        ${(d.links || []).map(l => `
+        ${(d.links||[]).map(l=>`
           <a href="${sanitize(l.url)}" target="_blank" rel="noopener noreferrer">
             <i class="${icon(l.url)}"></i> ${sanitize(l.title)}
-          </a>
-        `).join("")}
-      </div>
-    `;
-  } catch (e) {
+          </a>`).join("")}
+      </div>`;
+  } catch(e) {
     console.error("loadProfile error:", e);
     app.innerHTML = "<p style='color:#f87171'>failed to load profile. try refreshing.</p>";
   }
 }
 
-/* =====================
-   LOGIN SCREEN
-===================== */
 function showLogin() {
-  app.innerHTML = `
-    <h2>biolnk</h2>
-    <button onclick="loginDiscord()">Login with Discord</button>
-  `;
+  app.innerHTML = `<h2>biolnk</h2><button onclick="loginDiscord()">Login with Discord</button>`;
 }
 
-/* =====================
-   EDITOR
-   Doc is keyed by user.id (Discord ID).
-   One account = one page, always.
-   Username comes from Discord — no free text.
-===================== */
-function loadEditor() {
-  const discordName = user.username.toLowerCase();
+function showClaim() {
+  app.innerHTML = `
+    <h2>claim your username</h2>
+    <p>you can only do this once — choose carefully.</p>
+    <input id="claim-input" placeholder="username" maxlength="32" autocomplete="off" spellcheck="false">
+    <p class="hint" id="claim-hint"></p>
+    <button id="claim-btn" disabled>claim</button>
+    <p id="claim-out"></p>`;
 
+  const input = document.getElementById("claim-input");
+  const hint  = document.getElementById("claim-hint");
+  const btn   = document.getElementById("claim-btn");
+  const out   = document.getElementById("claim-out");
+  let checkTimer = null, lastChecked = "", isAvailable = false;
+  const valid = v => /^[a-z0-9_-]{3,32}$/.test(v);
+
+  input.addEventListener("input", () => {
+    const val = input.value.toLowerCase().trim();
+    input.value = val;
+    btn.disabled = true; isAvailable = false;
+    clearTimeout(checkTimer);
+    if (!val) { hint.textContent=""; hint.className="hint"; input.className=""; return; }
+    if (!valid(val)) { hint.textContent="3–32 chars, letters/numbers/_ only"; hint.className="hint err"; input.className="error"; return; }
+    hint.textContent="checking..."; hint.className="hint"; input.className="";
+    checkTimer = setTimeout(async () => {
+      if (val !== input.value.toLowerCase().trim()) return;
+      lastChecked = val;
+      try {
+        const results = await getDocs(query(collection(db,"users"), where("username","==",val)));
+        if (val !== lastChecked) return;
+        if (results.empty) {
+          hint.textContent=`✓ ${val} is available`; hint.className="hint ok";
+          input.className="ok"; isAvailable=true; btn.disabled=false;
+        } else {
+          hint.textContent=`✗ ${val} is already taken`; hint.className="hint err";
+          input.className="error"; isAvailable=false;
+        }
+      } catch(e) { hint.textContent="couldn't check availability"; hint.className="hint err"; }
+    }, 500);
+  });
+
+  btn.onclick = async () => {
+    const val = input.value.toLowerCase().trim();
+    if (!isAvailable || !valid(val)) return;
+    btn.disabled=true; out.textContent="claiming...";
+    try {
+      const results = await getDocs(query(collection(db,"users"), where("username","==",val)));
+      if (!results.empty) {
+        hint.textContent="✗ just taken by someone else — try another";
+        hint.className="hint err"; input.className="error";
+        isAvailable=false; out.textContent=""; btn.disabled=false; return;
+      }
+      await setDoc(doc(db,"users",user.id), {username:val,bio:"",theme:"",pfp:"",ownerId:user.id,links:[]});
+      out.textContent="claimed ✔";
+      setTimeout(() => loadEditor(val), 600);
+    } catch(e) {
+      console.error("claim error:", e);
+      out.textContent="something went wrong ❌"; btn.disabled=false;
+    }
+  };
+}
+
+function loadEditor(username) {
   app.innerHTML = `
     <h2>editor</h2>
-    <p style="color:#aaa;font-size:13px">your page: <b style="color:#fff">/#/${sanitize(discordName)}</b></p>
+    <p style="font-size:13px">your page: <b style="color:#fff">/#/${sanitize(username)}</b></p>
     <button onclick="logout()" style="margin-bottom:16px">logout</button>
     <input id="bio" placeholder="bio">
     <select id="theme">
@@ -293,114 +237,86 @@ function loadEditor() {
     <div id="links"></div>
     <button id="add">+ add link</button>
     <button id="save">save</button>
-    <p id="out"></p>
-  `;
+    <p id="out"></p>`;
 
-  const bioEl     = document.getElementById("bio");
-  const themeEl   = document.getElementById("theme");
-  const linksEl   = document.getElementById("links");
-  const uploadEl  = document.getElementById("upload");
-  const previewEl = document.getElementById("preview");
-  const outEl     = document.getElementById("out");
-
+  const bioEl=document.getElementById("bio"), themeEl=document.getElementById("theme"),
+        linksEl=document.getElementById("links"), uploadEl=document.getElementById("upload"),
+        previewEl=document.getElementById("preview"), outEl=document.getElementById("out");
   let file = null;
 
-  // Pre-fill existing data
-  getDoc(doc(db, "users", user.id)).then(snap => {
-    if (snap.exists()) {
-      const d = snap.data();
-      bioEl.value   = d.bio   || "";
-      themeEl.value = d.theme || "";
-
-      if (d.pfp) {
-        previewEl.src = d.pfp;
-        previewEl.style.display = "block";
-      }
-
-      (d.links || []).forEach(l => {
-        const r = document.createElement("div");
-        r.innerHTML = `<input placeholder="title"><input placeholder="url">`;
-        r.children[0].value = l.title || "";
-        r.children[1].value = l.url   || "";
-        linksEl.appendChild(r);
-      });
-    }
+  getDoc(doc(db,"users",user.id)).then(snap => {
+    if (!snap.exists()) return;
+    const d = snap.data();
+    bioEl.value=d.bio||""; themeEl.value=d.theme||"";
+    if (d.pfp) { previewEl.src=d.pfp; previewEl.style.display="block"; }
+    (d.links||[]).forEach(l => {
+      const r = document.createElement("div");
+      r.innerHTML=`<input placeholder="title"><input placeholder="url">`;
+      r.children[0].value=l.title||""; r.children[1].value=l.url||"";
+      linksEl.appendChild(r);
+    });
   }).catch(e => console.error("prefill error:", e));
 
   uploadEl.onclick = () => {
-    const i = document.createElement("input");
-    i.type = "file";
-    i.accept = "image/*";
+    const i=document.createElement("input"); i.type="file"; i.accept="image/*";
     i.onchange = e => {
-      file = e.target.files[0];
-      const fr = new FileReader();
-      fr.onload = ev => {
-        previewEl.src = ev.target.result;
-        previewEl.style.display = "block";
-      };
+      file=e.target.files[0];
+      const fr=new FileReader();
+      fr.onload=ev=>{ previewEl.src=ev.target.result; previewEl.style.display="block"; };
       fr.readAsDataURL(file);
     };
     i.click();
   };
 
   document.getElementById("add").onclick = () => {
-    const r = document.createElement("div");
-    r.innerHTML = `<input placeholder="title"><input placeholder="url">`;
+    const r=document.createElement("div");
+    r.innerHTML=`<input placeholder="title"><input placeholder="url">`;
     linksEl.appendChild(r);
   };
 
   document.getElementById("save").onclick = async () => {
-    outEl.innerText = "saving...";
-
+    outEl.innerText="saving...";
     try {
-      const existing = await getDoc(doc(db, "users", user.id));
-      let img = existing.exists() ? (existing.data().pfp || "") : "";
+      const existing = await getDoc(doc(db,"users",user.id));
 
+      // Ownership check — only the rightful owner can save
+      if (existing.exists() && existing.data().ownerId !== user.id) {
+        outEl.innerText="not authorised ❌"; return;
+      }
+
+      let img = existing.exists() ? (existing.data().pfp||"") : "";
       if (file) {
         img = await new Promise(r => {
-          const fr = new FileReader();
-          fr.onload = e => r(e.target.result);
-          fr.readAsDataURL(file);
+          const fr=new FileReader(); fr.onload=e=>r(e.target.result); fr.readAsDataURL(file);
         });
       }
 
-      // Always keyed by Discord ID — one account, one page
-      await setDoc(doc(db, "users", user.id), {
-        username: discordName,
+      // username is never touched — always written back as-is from the closure
+      await setDoc(doc(db,"users",user.id), {
+        username: username,
         bio:      bioEl.value,
         theme:    themeEl.value,
         pfp:      img,
         ownerId:  user.id,
-        links: [...linksEl.children].map(r => ({
-          title: r.children[0].value,
-          url:   r.children[1].value
-        }))
+        links:    [...linksEl.children].map(r=>({title:r.children[0].value, url:r.children[1].value}))
       });
 
-      outEl.innerText = "saved ✔";
-      location.hash = "#/" + discordName;
-
-    } catch (e) {
-      console.error("save error:", e);
-      outEl.innerText = "save failed ❌";
+      outEl.innerText="saved ✔";
+      location.hash="#/"+username;
+    } catch(e) {
+      console.error("save error:", e); outEl.innerText="save failed ❌";
     }
   };
 }
 
-/* =====================
-   START
-===================== */
 (async function start() {
   try {
-    if (route) {
-      await loadProfile(route);
-    } else {
-      if (user) loadEditor();
-      else showLogin();
-    }
-  } catch (e) {
+    if (route) await loadProfile(route);
+    else if (user) await afterLogin();
+    else showLogin();
+  } catch(e) {
     console.error("start error:", e);
-    app.innerHTML = "<p style='color:#f87171'>something went wrong. check the console.</p>";
+    app.innerHTML="<p style='color:#f87171'>something went wrong. check the console.</p>";
   }
 })();
 </script>
