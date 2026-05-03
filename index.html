@@ -90,10 +90,13 @@ img{border-radius:50%;margin-bottom:10px}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getFirestore, doc, setDoc, getDoc,
+  collection, query, where, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 /* =====================
-   FIREBASE INIT
+   FIREBASE
 ===================== */
 let db;
 try {
@@ -103,7 +106,8 @@ try {
     projectId: "bluesharklethal"
   }));
 } catch (e) {
-  document.getElementById("app").innerHTML = "<p style='color:#f87171'>firebase failed to load. check your connection.</p>";
+  document.getElementById("app").innerHTML =
+    "<p style='color:#f87171'>firebase failed to load. check your connection.</p>";
   throw e;
 }
 
@@ -111,8 +115,6 @@ const app = document.getElementById("app");
 
 /* =====================
    XSS SANITIZER
-   Escapes all user-supplied strings before
-   they are inserted into innerHTML.
 ===================== */
 function sanitize(str) {
   return String(str ?? "")
@@ -150,7 +152,7 @@ window.loginDiscord = () => {
     user = e.data;
     localStorage.setItem("discordUser", JSON.stringify(user));
     loadEditor();
-  }, { once: false });
+  });
 };
 
 window.logout = () => {
@@ -170,9 +172,12 @@ const route = location.hash.replace("#/", "").toLowerCase().trim();
 ===================== */
 function icon(url) {
   if (!url) return "fa-solid fa-link";
-  if (url.includes("github"))  return "fa-brands fa-github";
-  if (url.includes("discord")) return "fa-brands fa-discord";
-  if (url.includes("youtube")) return "fa-brands fa-youtube";
+  if (url.includes("github"))    return "fa-brands fa-github";
+  if (url.includes("discord"))   return "fa-brands fa-discord";
+  if (url.includes("youtube"))   return "fa-brands fa-youtube";
+  if (url.includes("twitter") || url.includes("x.com")) return "fa-brands fa-x-twitter";
+  if (url.includes("instagram")) return "fa-brands fa-instagram";
+  if (url.includes("twitch"))    return "fa-brands fa-twitch";
   return "fa-solid fa-link";
 }
 
@@ -191,7 +196,7 @@ function stars() {
   resize();
   addEventListener("resize", resize);
 
-  let s = Array.from({ length: 70 }, () => ({
+  const s = Array.from({ length: 70 }, () => ({
     x: Math.random() * c.width,
     y: Math.random() * c.height,
     v: Math.random() * 0.4
@@ -218,19 +223,20 @@ stars();
 
 /* =====================
    PROFILE VIEW
-   All Firestore data is sanitized before
-   being written into innerHTML.
+   Queries by username field since
+   docs are keyed by Discord ID.
 ===================== */
 async function loadProfile(name) {
   try {
-    const snap = await getDoc(doc(db, "users", name));
+    const q = query(collection(db, "users"), where("username", "==", name));
+    const results = await getDocs(q);
 
-    if (!snap.exists()) {
+    if (results.empty) {
       app.innerHTML = "<h1>user not found</h1>";
       return;
     }
 
-    const d = snap.data();
+    const d = results.docs[0].data();
 
     app.innerHTML = `
       ${d.pfp ? `<img src="${sanitize(d.pfp)}" width="100" alt="profile picture">` : ""}
@@ -262,16 +268,17 @@ function showLogin() {
 
 /* =====================
    EDITOR
-   Ownership check: reads the doc before saving.
-   If ownerId exists and doesn't match current
-   user, the save is blocked.
+   Doc is keyed by user.id (Discord ID).
+   One account = one page, always.
+   Username comes from Discord — no free text.
 ===================== */
 function loadEditor() {
+  const discordName = user.username.toLowerCase();
+
   app.innerHTML = `
     <h2>editor</h2>
-    <p>logged in as <b>${sanitize(user.username)}</b></p>
-    <button onclick="logout()">logout</button>
-    <input id="username" placeholder="username">
+    <p style="color:#aaa;font-size:13px">your page: <b style="color:#fff">/#/${sanitize(discordName)}</b></p>
+    <button onclick="logout()" style="margin-bottom:16px">logout</button>
     <input id="bio" placeholder="bio">
     <select id="theme">
       <option value="">default</option>
@@ -281,34 +288,35 @@ function loadEditor() {
       <option value="theme-green">green</option>
       <option value="theme-gold">gold</option>
     </select>
-    <div class="upload" id="upload">upload image</div>
+    <div class="upload" id="upload">click to upload profile picture</div>
     <img id="preview" width="80" style="display:none" alt="preview">
     <div id="links"></div>
-    <button id="add">+ link</button>
+    <button id="add">+ add link</button>
     <button id="save">save</button>
     <p id="out"></p>
   `;
 
-  const usernameEl = document.getElementById("username");
-  const bioEl      = document.getElementById("bio");
-  const themeEl    = document.getElementById("theme");
-  const linksEl    = document.getElementById("links");
-  const uploadEl   = document.getElementById("upload");
-  const previewEl  = document.getElementById("preview");
-  const outEl      = document.getElementById("out");
+  const bioEl     = document.getElementById("bio");
+  const themeEl   = document.getElementById("theme");
+  const linksEl   = document.getElementById("links");
+  const uploadEl  = document.getElementById("upload");
+  const previewEl = document.getElementById("preview");
+  const outEl     = document.getElementById("out");
 
   let file = null;
-  const discordName = user.username.toLowerCase();
 
-  // Pre-fill if this user already has a profile
-  getDoc(doc(db, "users", discordName)).then(snap => {
+  // Pre-fill existing data
+  getDoc(doc(db, "users", user.id)).then(snap => {
     if (snap.exists()) {
       const d = snap.data();
-      usernameEl.value = d.username || "";
-      bioEl.value      = d.bio      || "";
-      themeEl.value    = d.theme    || "";
+      bioEl.value   = d.bio   || "";
+      themeEl.value = d.theme || "";
 
-      // Re-populate saved links
+      if (d.pfp) {
+        previewEl.src = d.pfp;
+        previewEl.style.display = "block";
+      }
+
       (d.links || []).forEach(l => {
         const r = document.createElement("div");
         r.innerHTML = `<input placeholder="title"><input placeholder="url">`;
@@ -317,9 +325,7 @@ function loadEditor() {
         linksEl.appendChild(r);
       });
     }
-  }).catch(e => {
-    console.error("prefill error:", e);
-  });
+  }).catch(e => console.error("prefill error:", e));
 
   uploadEl.onclick = () => {
     const i = document.createElement("input");
@@ -344,30 +350,10 @@ function loadEditor() {
   };
 
   document.getElementById("save").onclick = async () => {
-    const targetName = usernameEl.value.trim().toLowerCase();
-
-    if (!targetName) {
-      outEl.innerText = "username required ❌";
-      return;
-    }
-
     outEl.innerText = "saving...";
 
     try {
-      /* ------------------------------------------
-         OWNERSHIP CHECK
-         Read the target username doc first.
-         - Doc doesn't exist → free to claim.
-         - Doc exists, ownerId matches → allow update.
-         - Doc exists, ownerId is someone else → block.
-      ------------------------------------------ */
-      const existing = await getDoc(doc(db, "users", targetName));
-
-      if (existing.exists() && existing.data().ownerId !== user.id) {
-        outEl.innerText = "that username is already taken ❌";
-        return;
-      }
-
+      const existing = await getDoc(doc(db, "users", user.id));
       let img = existing.exists() ? (existing.data().pfp || "") : "";
 
       if (file) {
@@ -378,8 +364,9 @@ function loadEditor() {
         });
       }
 
-      await setDoc(doc(db, "users", targetName), {
-        username: targetName,
+      // Always keyed by Discord ID — one account, one page
+      await setDoc(doc(db, "users", user.id), {
+        username: discordName,
         bio:      bioEl.value,
         theme:    themeEl.value,
         pfp:      img,
@@ -391,7 +378,7 @@ function loadEditor() {
       });
 
       outEl.innerText = "saved ✔";
-      location.hash = "#/" + targetName;
+      location.hash = "#/" + discordName;
 
     } catch (e) {
       console.error("save error:", e);
