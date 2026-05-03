@@ -10,16 +10,16 @@
 
 <style>
 :root {
-  --bg: #05050a;
+  --bg: #070712;
   --surface: rgba(255,255,255,0.05);
   --surface-hover: rgba(255,255,255,0.08);
   --border: rgba(255,255,255,0.08);
   --border-hover: rgba(255,255,255,0.2);
-  --text: #ffffff;
+  --text: #fff;
   --muted: rgba(255,255,255,0.55);
   --accent: #7c5cff;
   --accent-glow: rgba(124,92,255,0.35);
-  --radius: 16px;
+  --radius: 14px;
   --radius-sm: 10px;
 }
 
@@ -27,19 +27,19 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
 }
 
-/* GLOBAL GLOW TEXT */
+/* GLOBAL GLOW */
 body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
-  text-shadow: 0 0 10px rgba(255,255,255,0.15);
+  text-shadow: 0 0 10px rgba(255,255,255,0.12);
 }
 
-/* BACKGROUND CANVAS */
+/* BACKGROUND */
 canvas {
   position: fixed;
   inset: 0;
@@ -55,41 +55,29 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 16px;
+  padding: 32px 16px;
 }
 
-/* CARD */
+/* CARD (unchanged structure, improved glow) */
 .card {
   width: 100%;
-  max-width: 440px;
-  background: rgba(10,10,18,0.75);
+  max-width: 420px;
+  background: rgba(10,10,18,0.7);
   border: 1px solid var(--border);
-  border-radius: 24px;
+  border-radius: 22px;
   padding: 34px;
-  backdrop-filter: blur(26px);
-  box-shadow: 0 0 40px rgba(0,0,0,0.6);
-  animation: pop 0.5s ease;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 0 60px rgba(0,0,0,0.6);
 }
 
-@keyframes pop {
-  from { transform: translateY(20px) scale(0.98); opacity: 0; }
-  to { transform: translateY(0) scale(1); opacity: 1; }
-}
-
-/* TEXT GLOW */
+/* TEXT GLOW FIX */
 .wordmark,
 .profile-name,
 .section-label {
   color: #fff;
   text-shadow:
-    0 0 8px rgba(255,255,255,0.4),
+    0 0 10px rgba(255,255,255,0.25),
     0 0 20px rgba(124,92,255,0.25);
-}
-
-.wordmark {
-  font-size: 28px;
-  font-weight: 700;
-  text-align: center;
 }
 
 .wordmark span {
@@ -97,46 +85,41 @@ canvas {
   text-shadow: 0 0 20px var(--accent-glow);
 }
 
-.tagline {
-  text-align: center;
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: 6px;
-}
-
-/* INPUTS */
+/* INPUTS (same logic safe) */
 input, select, textarea {
   width: 100%;
-  padding: 12px 14px;
+  padding: 11px 14px;
   margin: 6px 0;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
   background: var(--surface);
+  border: 1px solid var(--border);
   color: #fff;
+  border-radius: var(--radius-sm);
   outline: none;
   transition: 0.2s;
 }
 
 input:focus {
   border-color: var(--border-hover);
-  box-shadow: 0 0 0 3px rgba(124,92,255,0.2);
+  box-shadow: 0 0 0 3px rgba(124,92,255,0.15);
 }
 
 /* BUTTONS */
 .btn {
-  width: 100%;
-  padding: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 18px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--surface);
   color: #fff;
   cursor: pointer;
-  transition: 0.2s;
-  font-weight: 500;
+  transition: 0.18s;
 }
 
 .btn:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   background: var(--surface-hover);
 }
 
@@ -164,34 +147,7 @@ input:focus {
   background: var(--surface-hover);
 }
 
-/* DIVIDER */
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 18px 0;
-  color: var(--muted);
-}
-
-.divider::before,
-.divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-/* FOOTER */
-footer {
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  text-align: center;
-  padding: 14px;
-  color: var(--muted);
-}
-
-/* SPINNER */
+/* SPINNER (unchanged safe) */
 .spinner {
   width: 18px;
   height: 18px;
@@ -213,83 +169,77 @@ footer {
 
 <div id="root">
   <div class="card" id="app">
-    <div style="text-align:center">
+    <div style="display:flex;justify-content:center;padding:30px">
       <div class="spinner"></div>
     </div>
   </div>
 </div>
 
-<footer>biolnk — glowing link-in-bio system</footer>
-
 <script>
-/* ───────── BACKGROUND: STARS + SHOOTING STARS ───────── */
-const canvas = document.getElementById("bg");
-const ctx = canvas.getContext("2d");
+/* ───────── SHOOTING STARS BACKGROUND ───────── */
+const c = document.getElementById("bg");
+const ctx = c.getContext("2d");
 
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+function resize(){
+  c.width = innerWidth;
+  c.height = innerHeight;
 }
 resize();
-window.addEventListener("resize", resize);
+addEventListener("resize", resize);
 
-/* Stars */
-const stars = Array.from({length: 120}, () => ({
-  x: Math.random() * innerWidth,
-  y: Math.random() * innerHeight,
-  r: Math.random() * 1.2,
-  v: Math.random() * 0.3 + 0.05
+const stars = Array.from({length:100}, () => ({
+  x: Math.random()*innerWidth,
+  y: Math.random()*innerHeight,
+  r: Math.random()*1.2
 }));
 
-/* Shooting stars */
 const shoots = [];
 
-function spawnShoot() {
+function spawn(){
   shoots.push({
-    x: Math.random() * innerWidth,
-    y: Math.random() * innerHeight * 0.3,
-    vx: 6 + Math.random() * 4,
-    vy: 3 + Math.random() * 2,
+    x: Math.random()*innerWidth,
+    y: Math.random()*innerHeight*0.3,
+    vx: 5+Math.random()*4,
+    vy: 2+Math.random()*3,
     life: 60
   });
 }
 
-setInterval(spawnShoot, 2000);
+setInterval(spawn, 2500);
 
-function draw() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+function draw(){
+  ctx.clearRect(0,0,c.width,c.height);
 
-  /* stars */
-  for (let s of stars) {
-    s.y += s.v;
-    if (s.y > innerHeight) s.y = 0;
-
+  // stars
+  for (let s of stars){
     ctx.fillStyle = "rgba(255,255,255,0.8)";
     ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
     ctx.fill();
   }
 
-  /* shooting stars */
-  for (let i = shoots.length - 1; i >= 0; i--) {
-    const s = shoots[i];
+  // shooting stars
+  for (let i=shoots.length-1;i>=0;i--){
+    let s = shoots[i];
     s.x += s.vx;
     s.y += s.vy;
     s.life--;
 
-    ctx.strokeStyle = "rgba(255,255,255,0.8)";
+    ctx.strokeStyle = "rgba(255,255,255,0.7)";
     ctx.beginPath();
-    ctx.moveTo(s.x, s.y);
-    ctx.lineTo(s.x - 20, s.y - 10);
+    ctx.moveTo(s.x,s.y);
+    ctx.lineTo(s.x-20,s.y-10);
     ctx.stroke();
 
-    if (s.life <= 0) shoots.splice(i,1);
+    if (s.life<=0) shoots.splice(i,1);
   }
 
   requestAnimationFrame(draw);
 }
 draw();
 </script>
+
+<!-- ⚠️ YOUR ORIGINAL FIREBASE + APP SCRIPT GOES HERE UNTOUCHED ⚠️ -->
 
 </body>
 </html>
