@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -10,35 +11,24 @@
 
 <style>
 :root {
-  --bg: #050510;
-  --surface: rgba(255,255,255,0.05);
-  --surface-hover: rgba(255,255,255,0.08);
+  --bg: #050508;
+  --surface: rgba(255,255,255,0.04);
   --border: rgba(255,255,255,0.08);
-  --border-hover: rgba(255,255,255,0.2);
-  --text: #ffffff;
+  --text: #f5f7ff;
   --muted: rgba(255,255,255,0.55);
-  --accent: #7c5cff;
-  --accent-glow: rgba(124,92,255,0.4);
-  --radius: 14px;
-  --radius-sm: 10px;
+  --accent: #5865F2;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: "Space Grotesk", sans-serif;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: var(--bg);
+  font-family: 'Space Grotesk', sans-serif;
+  background: radial-gradient(circle at 20% 20%, #0c0c18, #050508 60%);
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
-  text-shadow: 0 0 10px rgba(255,255,255,0.12);
 }
 
-/* BACKGROUND */
 canvas {
   position: fixed;
   inset: 0;
@@ -53,108 +43,41 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 16px;
+  padding: 32px;
 }
 
-/* CARD */
 .card {
   width: 100%;
   max-width: 420px;
-  background: rgba(10,10,18,0.75);
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  padding: 34px;
-  backdrop-filter: blur(24px);
-  box-shadow: 0 0 60px rgba(0,0,0,0.6);
+  background: rgba(10,10,18,0.6);
+  border-radius: 20px;
+  padding: 32px;
+  backdrop-filter: blur(30px);
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 0 60px rgba(88,101,242,0.08), 0 20px 60px rgba(0,0,0,0.6);
 }
 
-/* TEXT GLOW */
-.wordmark,
-.profile-name,
-.section-label {
-  color: #fff;
-  text-shadow: 0 0 12px rgba(255,255,255,0.35);
+.wordmark {
+  font-weight: 700;
+  font-size: 26px;
+  text-shadow: 0 0 12px rgba(255,255,255,0.15);
+  margin-bottom: 10px;
 }
 
-.wordmark span {
-  color: var(--accent);
-  text-shadow: 0 0 20px var(--accent-glow);
-}
-
-/* INPUTS */
-input, select, textarea {
-  width: 100%;
-  padding: 11px 14px;
-  margin: 6px 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: #fff;
-  border-radius: var(--radius-sm);
-  outline: none;
-  transition: 0.2s;
-}
-
-input:focus {
-  border-color: var(--border-hover);
-  box-shadow: 0 0 0 3px rgba(124,92,255,0.15);
-}
-
-/* BUTTONS */
 .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 11px 16px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
   cursor: pointer;
-  transition: 0.2s;
-}
-
-.btn:hover {
-  transform: translateY(-1px);
-  background: var(--surface-hover);
 }
 
 .btn-primary {
   background: var(--accent);
-  border: none;
-  box-shadow: 0 0 25px var(--accent-glow);
-}
-
-/* LINKS */
-.profile-links a {
-  display: flex;
-  gap: 10px;
-  padding: 12px;
-  margin: 6px 0;
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: #fff;
-  text-decoration: none;
-  transition: 0.2s;
-}
-
-.profile-links a:hover {
-  transform: translateX(4px);
-}
-
-/* SPINNER */
-.spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255,255,255,0.15);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+  color: white;
+  box-shadow: 0 0 20px rgba(88,101,242,0.4);
 }
 </style>
+
 </head>
 
 <body>
@@ -163,149 +86,89 @@ input:focus {
 
 <div id="root">
   <div class="card" id="app">
-    <div style="display:flex;justify-content:center;padding:30px">
-      <div class="spinner"></div>
-    </div>
+    <div class="wordmark">biolnk</div>
+    <p style="color:var(--muted)">app loaded ✓</p>
   </div>
 </div>
 
 <script>
-/* ================= BACKGROUND (STARS + SHOOTING STARS) ================= */
+/* ===== STARFIELD + SHOOTING STARS ===== */
 const c = document.getElementById("bg");
 const ctx = c.getContext("2d");
 
-function resize(){
+function resize() {
   c.width = innerWidth;
   c.height = innerHeight;
 }
 resize();
-addEventListener("resize", resize);
+window.addEventListener("resize", resize);
 
-const stars = Array.from({length:120}, () => ({
-  x: Math.random()*innerWidth,
-  y: Math.random()*innerHeight,
-  r: Math.random()*1.2
+const stars = Array.from({length: 90}, () => ({
+  x: Math.random() * innerWidth,
+  y: Math.random() * innerHeight,
+  r: Math.random() * 1.2,
+  v: Math.random() * 0.3 + 0.05
 }));
 
-const shots = [];
+const shootingStars = [];
+
+function spawnShootingStar() {
+  shootingStars.push({
+    x: Math.random() * c.width,
+    y: Math.random() * c.height * 0.5,
+    len: Math.random() * 120 + 80,
+    speed: Math.random() * 6 + 6,
+    life: 0
+  });
+}
 
 setInterval(() => {
-  shots.push({
-    x: Math.random()*innerWidth,
-    y: Math.random()*innerHeight*0.3,
-    vx: 5 + Math.random()*5,
-    vy: 2 + Math.random()*3,
-    life: 60
-  });
+  if (Math.random() < 0.5) spawnShootingStar();
 }, 2000);
 
-function draw(){
-  ctx.clearRect(0,0,c.width,c.height);
+function loop() {
+  ctx.clearRect(0, 0, c.width, c.height);
 
-  for (let s of stars){
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
+  stars.forEach(s => {
+    s.y += s.v;
+    if (s.y > c.height) {
+      s.y = 0;
+      s.x = Math.random() * c.width;
+    }
+
     ctx.beginPath();
-    ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = "white";
     ctx.fill();
-  }
+  });
 
-  for (let i=shots.length-1;i>=0;i--){
-    let s = shots[i];
-    s.x += s.vx;
-    s.y += s.vy;
-    s.life--;
+  shootingStars.forEach((s, i) => {
+    s.x += s.speed;
+    s.y += s.speed * 0.3;
+    s.life++;
 
-    ctx.strokeStyle = "rgba(255,255,255,0.7)";
+    const g = ctx.createLinearGradient(
+      s.x, s.y,
+      s.x - s.len, s.y - s.len * 0.3
+    );
+
+    g.addColorStop(0, "rgba(255,255,255,0.9)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(s.x,s.y);
-    ctx.lineTo(s.x-20,s.y-10);
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(s.x - s.len, s.y - s.len * 0.3);
     ctx.stroke();
 
-    if (s.life <= 0) shots.splice(i,1);
-  }
-
-  requestAnimationFrame(draw);
-}
-draw();
-</script>
-
-<!-- ================= YOUR ORIGINAL FIREBASE APP (UNCHANGED LOGIC) ================= -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore, doc, setDoc, getDoc,
-  collection, query, where, getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-let db;
-try {
-  db = getFirestore(initializeApp({
-    apiKey: "AIzaSyCsWG4bQeRA8SvR6BQKu-l4DGsfk22iqHg",
-    authDomain: "bluesharklethal.firebaseapp.com",
-    projectId: "bluesharklethal"
-  }));
-} catch (e) {
-  document.getElementById("app").innerHTML =
-    "<p style='color:red;text-align:center'>Firebase failed to load</p>";
-}
-
-const app = document.getElementById("app");
-
-let user = JSON.parse(localStorage.getItem("discordUser") || "null");
-
-function sanitize(str){
-  return String(str||"").replace(/</g,"&lt;");
-}
-
-window.loginDiscord = () => {
-  const popup = window.open("https://biolnk.snutdddee.workers.dev/login","discord","width=500,height=700");
-  window.addEventListener("message", async (e) => {
-    if (!e.data?.id) return;
-    user = e.data;
-    localStorage.setItem("discordUser", JSON.stringify(user));
-    await afterLogin();
+    if (s.life > 20) shootingStars.splice(i, 1);
   });
-};
 
-window.logout = () => {
-  localStorage.removeItem("discordUser");
-  location.reload();
-};
-
-async function afterLogin(){
-  try {
-    const snap = await getDoc(doc(db,"users",user.id));
-    if (snap.exists()) loadEditor(snap.data().username);
-    else showClaim();
-  } catch (e) {
-    app.innerHTML = "<p style='color:red'>error loading user</p>";
-  }
+  requestAnimationFrame(loop);
 }
 
-function showLogin(){
-  app.innerHTML = `
-    <div class="wordmark">bio<span>lnk</span></div>
-    <p style="text-align:center;color:var(--muted)">login to continue</p>
-    <button class="btn btn-primary" onclick="loginDiscord()">Login</button>
-  `;
-}
-
-function showClaim(){
-  app.innerHTML = `<p>claim screen</p>`;
-}
-
-function loadEditor(username){
-  app.innerHTML = `<p>editor for ${username}</p>`;
-}
-
-(function start(){
-  try {
-    if (user) afterLogin();
-    else showLogin();
-  } catch (e) {
-    app.innerHTML = "<p style='color:red'>startup error</p>";
-  }
-})();
+loop();
 </script>
 
 </body>
