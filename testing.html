@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Links Simplified</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: radial-gradient(circle at top, #0b0f1a, #05070d);
+  color: white;
+  text-align: center;
+}
+
+.container {
+  max-width: 500px;
+  margin: 80px auto;
+  padding: 20px;
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  background: rgba(255,255,255,0.05);
+  box-shadow: 0 0 25px rgba(0,150,255,0.2);
+}
+
+button {
+  background: #1e90ff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  box-shadow: 0 0 10px #1e90ff;
+}
+
+input {
+  padding: 10px;
+  margin: 5px;
+  width: 90%;
+  border-radius: 8px;
+  border: none;
+}
+
+.link {
+  margin: 10px;
+  padding: 12px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 10px;
+  cursor: pointer;
+}
+</style>
+
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+const SUPABASE_URL = "YOUR_SUPABASE_URL";
+const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const app = document.getElementById("app");
+
+function router() {
+  const hash = location.hash || "#/";
+
+  if (hash === "#/") return landing();
+  if (hash === "#/app") return dashboard();
+  if (hash.startsWith("#/u/")) return profile(hash.split("/")[2]);
+}
+
+window.addEventListener("hashchange", router);
+window.addEventListener("load", router);
+
+function landing() {
+  app.innerHTML = `
+    <div class="container">
+      <h1>🌌 Links Simplified</h1>
+      <p>Your links, simplified.</p>
+      <button onclick="login()">Login with Discord</button>
+    </div>
+  `;
+}
+
+async function login() {
+  await supabase.auth.signInWithOAuth({
+    provider: "discord",
+    options: {
+      redirectTo: window.location.origin + window.location.pathname + "#/app"
+    }
+  });
+}
+
+async function dashboard() {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    location.hash = "#/";
+    return;
+  }
+
+  const { data: links } = await supabase
+    .from("links")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at");
+
+  app.innerHTML = `
+    <div class="container">
+      <h2>${user.user_metadata.full_name}</h2>
+
+      <input id="title" placeholder="Title" />
+      <input id="url" placeholder="URL" />
+      <button onclick="addLink()">Add Link</button>
+
+      <div id="links"></div>
+
+      <p>Public page: <br>
+      ${location.origin + location.pathname}#/u/${user.user_metadata.user_name}</p>
+    </div>
+  `;
+
+  const list = document.getElementById("links");
+
+  (links || []).forEach(link => {
+    const div = document.createElement("div");
+    div.className = "link";
+    div.innerHTML = `
+      <a href="${link.url}" target="_blank">${link.title}</a>
+      <br><button onclick="deleteLink('${link.id}')">Delete</button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+async function addLink() {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const title = document.getElementById("title").value;
+  const url = document.getElementById("url").value;
+
+  await supabase.from("links").insert({
+    user_id: user.id,
+    username: user.user_metadata.user_name,
+    title,
+    url
+  });
+
+  location.reload();
+}
+
+async function deleteLink(id) {
+  await supabase.from("links").delete().eq("id", id);
+  location.reload();
+}
+
+async function profile(username) {
+  const { data: links } = await supabase
+    .from("links")
+    .select("*")
+    .eq("username", username);
+
+  app.innerHTML = `
+    <div class="container">
+      <h2>@${username}</h2>
+      <div id="links"></div>
+    </div>
+  `;
+
+  const list = document.getElementById("links");
+
+  (links || []).forEach(link => {
+    const div = document.createElement("div");
+    div.className = "link";
+    div.innerHTML = `<a href="${link.url}" target="_blank">${link.title}</a>`;
+    list.appendChild(div);
+  });
+}
+</script>
+
+</body>
+</html>
